@@ -4,4 +4,4 @@ Enter a shop pack's price and contents and see how its gem value compares with b
 
 Built from the data in the `offers/` folder of Tyrauku's channel workspace; `index.html` is a generated file, do not edit it by hand. Values are gem-equivalents; Divine, Radiant, Fate and Dream Orb are estimates from summon odds.
 
-Live page: GitHub Pages serves `index.html` from this repository's root.
+Live page: https://tyrauku.github.io/invokers-offer-calculator/ (GitHub Pages serves `index.html` from this repository's root).
