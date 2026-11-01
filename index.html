@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invokers Offer Calculator</title>
+<meta name="description" content="Enter a shop pack's price and contents to see its gem value and how it compares to buying gems from the Bank.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0b0d;
+    --surface: #15161a;
+    --surface-2: #1c1d22;
+    --border: #2a2b31;
+    --text: #f2f2f2;
+    --muted: #9a9ba3;
+    --faint: #5e5f67;
+    --gold: #d4a63a;
+    --gold-ink: #1a1403;
+    --great: #39c977;
+    --good: #8fd16a;
+    --okay: #e3b341;
+    --weak: #ef8f3c;
+    --skip: #e5534b;
+    --radius: 10px;
+    --font: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+  body { padding: 20px 16px 60px; }
+  a { color: var(--gold); }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; margin-bottom: 18px; }
+  h1 { font: 700 34px/1 var(--display); letter-spacing: .5px; margin: 0; text-transform: uppercase; }
+  h1 span { color: var(--gold); }
+  header .meta { color: var(--muted); font-size: 13px; }
+  h2 { font: 600 20px/1 var(--display); text-transform: uppercase; letter-spacing: .6px; margin: 0 0 12px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .sticky { position: sticky; top: 16px; }
+
+  /* price row */
+  .price-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .price-row label { color: var(--muted); font-size: 13px; }
+  .price-input { position: relative; }
+  .price-input::before { content: "$"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .price-input input { width: 120px; padding: 9px 10px 9px 24px; font: 600 18px var(--display); background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; }
+  .chip:hover { border-color: var(--gold); }
+  .chip.on { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 600; }
+
+  /* item groups */
+  .group { margin-top: 14px; }
+  .group h3 { font: 600 13px var(--font); text-transform: uppercase; letter-spacing: 1px; color: var(--faint); margin: 0 0 8px; }
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .item { display: grid; grid-template-columns: 1fr 72px; grid-template-rows: auto auto; gap: 2px 8px; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .item.has { border-color: var(--gold); }
+  .item .nm { font-weight: 500; font-size: 14px; }
+  .item .val { grid-column: 1; color: var(--muted); font-size: 12px; }
+  .item .val b { color: var(--text); font-weight: 500; }
+  .item .val .est { color: var(--okay); }
+  .item .val .np { color: var(--skip); }
+  .item input.qty { grid-column: 2; grid-row: 1 / span 2; width: 72px; padding: 8px 6px; text-align: center; font: 600 17px var(--display); background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+  .item input.qty:focus, .price-input input:focus, input.unit:focus, .search:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
+  .item input.unit { display: none; }
+  body.editing .item input.unit { display: block; grid-column: 1; width: 100%; padding: 4px 6px; font: 500 13px var(--font); background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+  body.editing .item .val { display: none; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  /* result */
+  .verdict { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 8px; background: var(--surface-2); border-left: 6px solid var(--faint); margin-bottom: 14px; }
+  .verdict .mult { font: 700 56px/1 var(--display); min-width: 120px; }
+  .verdict .mult small { font-size: 26px; }
+  .verdict .lab { font: 700 24px/1 var(--display); text-transform: uppercase; letter-spacing: 1px; }
+  .verdict .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .v-great { border-left-color: var(--great); } .v-great .mult, .v-great .lab { color: var(--great); }
+  .v-good { border-left-color: var(--good); } .v-good .mult, .v-good .lab { color: var(--good); }
+  .v-okay { border-left-color: var(--okay); } .v-okay .mult, .v-okay .lab { color: var(--okay); }
+  .v-weak { border-left-color: var(--weak); } .v-weak .mult, .v-weak .lab { color: var(--weak); }
+  .v-skip { border-left-color: var(--skip); } .v-skip .mult, .v-skip .lab { color: var(--skip); }
+  .v-free { border-left-color: var(--gold); } .v-free .mult, .v-free .lab { color: var(--gold); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .stat { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font: 600 22px/1.1 var(--display); margin-top: 2px; }
+  .stat .v small { color: var(--muted); font-size: 13px; font-family: var(--font); font-weight: 400; }
+  table.bd { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.bd td { padding: 5px 4px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.bd td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.bd tr.off td { color: var(--faint); text-decoration: line-through; }
+  table.bd tr.np td { color: var(--muted); }
+  table.bd .tag { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .note.warn { color: var(--okay); }
+  .match { margin-top: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; font-size: 13px; }
+  .match b { color: var(--gold); }
+  .toggles { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .toggles label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+  .toggles input { margin-top: 3px; accent-color: var(--gold); }
+  .toggles .d { color: var(--muted); font-size: 12.5px; display: block; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  button.btn { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font: 500 14px var(--font); cursor: pointer; }
+  button.btn:hover { border-color: var(--gold); }
+  button.btn.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 600; }
+
+  /* catalog */
+  .catalog { margin-top: 16px; }
+  .cat-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; }
+  .search { flex: 1 1 220px; padding: 9px 12px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font: 14px var(--font); }
+  .tbl-wrap { overflow-x: auto; }
+  table.cat { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.cat th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; padding: 8px 8px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; user-select: none; }
+  table.cat th.sorted { color: var(--gold); }
+  table.cat td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.cat tbody tr { cursor: pointer; }
+  table.cat tbody tr:hover { background: var(--surface-2); }
+  table.cat td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font: 600 12px var(--font); }
+  .p-great { background: color-mix(in srgb, var(--great) 20%, transparent); color: var(--great); }
+  .p-good { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
+  .p-okay { background: color-mix(in srgb, var(--okay) 20%, transparent); color: var(--okay); }
+  .p-weak { background: color-mix(in srgb, var(--weak) 20%, transparent); color: var(--weak); }
+  .p-skip { background: color-mix(in srgb, var(--skip) 20%, transparent); color: var(--skip); }
+  .p-free { background: color-mix(in srgb, var(--gold) 20%, transparent); color: var(--gold); }
+  .contents { color: var(--muted); }
+  .cat-count { color: var(--muted); font-size: 13px; }
+  .limit { color: var(--muted); white-space: nowrap; }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+    .sticky { position: static; }
+    .verdict .mult { font-size: 44px; min-width: 96px; }
+    h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Invokers <span>Offer Calculator</span></h1>
+    <div class="meta">Titan Legacy shop packs · values in gem-equivalents · data updated <span id="updated"></span></div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Pack</h2>
+      <div class="price-row">
+        <label for="price">Price</label>
+        <div class="price-input"><input id="price" type="number" inputmode="decimal" min="0" step="0.01" value="9.99"></div>
+        <div class="chips" id="price-chips"></div>
+      </div>
+      <div id="groups"></div>
+      <div class="btns">
+        <button class="btn" id="clear">Clear pack</button>
+        <button class="btn" id="edit-values">Edit item values</button>
+        <button class="btn" id="reset-values" hidden>Reset values to defaults</button>
+      </div>
+    </section>
+
+    <aside class="card sticky" id="result">
+      <h2>Verdict</h2>
+      <div class="verdict" id="verdict">
+        <div class="mult" id="mult">—</div>
+        <div><div class="lab" id="label">Enter a pack</div><div class="sub" id="sub">Set the price and what's inside.</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Pack gem value</div><div class="v" id="gem-value">0</div></div>
+        <div class="stat"><div class="k">Bank gives for this price</div><div class="v" id="bank-value">0</div></div>
+        <div class="stat"><div class="k">Gems per $</div><div class="v" id="gpd">—</div></div>
+        <div class="stat"><div class="k">Bank rate at this price</div><div class="v" id="bank-gpd">—</div></div>
+      </div>
+      <table class="bd"><tbody id="breakdown"></tbody></table>
+      <div id="notes"></div>
+      <div id="match"></div>
+      <div class="toggles">
+        <label><input type="checkbox" id="opt-filler" checked><span>Count filler items<span class="d">Gold, memorium, energy, tokens and boosts. Turn off if you'd never spend gems on them.</span></span></label>
+        <label><input type="checkbox" id="opt-first"><span>Bank first-purchase ×2 still available<span class="d">New accounts get double gems once per Bank tier, which doubles the baseline this pack is judged against.</span></span></label>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card catalog">
+    <h2>Logged packs</h2>
+    <div class="cat-head">
+      <input class="search" id="search" type="search" placeholder="Search packs or contents, e.g. divine, codex, $9.99">
+      <div class="chips" id="cat-chips"></div>
+      <span class="cat-count" id="cat-count"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="cat">
+        <thead><tr>
+          <th data-k="name">Pack</th><th data-k="price" class="num">Price</th><th>Contents</th><th data-k="limit">Limit</th><th data-k="multiplier" class="num sorted">Value</th><th data-k="logged">Logged</th>
+        </tr></thead>
+        <tbody id="cat-body"></tbody>
+      </table>
+    </div>
+    <div class="note">Click a row to load it into the calculator. Multipliers here use the current toggles and any edited item values. “+” means the pack also contains unpriced items (Titan Spark, Large XP Potion, champion fodder, Dragonsoul), so its real value is somewhat higher.</div>
+  </section>
+</div>
+
+<script>/*
+ * Invokers: Titan Legacy — offer value math.
+ * Pure functions, no DOM. Works in the browser (window.OfferCalc) and in Node
+ * (require('./calc.js')) so the same code can drive the HTML calculator and a
+ * Discord bot later.
+ *
+ * Model (from data/invokers-handoff.md):
+ *   every item -> gem-equivalent value
+ *   pack gem value / gems the same $ buys in the Bank  = multiplier
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.OfferCalc = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /** Gems the Bank sells for `price`, linearly interpolated between tiers. */
+  function bankGems(price, bank, opts) {
+    opts = opts || {};
+    const pts = bank.slice().sort((a, b) => a.price - b.price);
+    if (!pts.length || !(price > 0)) return 0;
+    let g;
+    const lo = pts[0], hi = pts[pts.length - 1];
+    if (price <= lo.price) g = price * (lo.gems / lo.price);
+    else if (price >= hi.price) g = price * (hi.gems / hi.price);
+    else {
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        if (price >= a.price && price <= b.price) {
+          const t = (price - a.price) / (b.price - a.price);
+          g = a.gems + t * (b.gems - a.gems);
+          break;
+        }
+      }
+    }
+    if (opts.firstPurchase) g *= opts.firstPurchaseMultiplier || 2;
+    return g;
+  }
+
+  function verdictFor(multiplier, bands) {
+    const sorted = bands.slice().sort((a, b) => b.min - a.min);
+    for (const b of sorted) if (multiplier >= b.min) return b.label;
+    return sorted[sorted.length - 1] ? sorted[sorted.length - 1].label : '';
+  }
+
+  /**
+   * Evaluate a pack.
+   * @param {object} p
+   * @param {number} p.price            USD price (0 = free)
+   * @param {object} p.contents         { itemKey: qty }
+   * @param {object} p.items            item table { key: {name, gems, estimate?, filler?} }
+   * @param {Array}  p.bank             [{price, gems}]
+   * @param {Array}  p.verdictBands     [{min, label}]
+   * @param {object} [p.options]
+   * @param {boolean} [p.options.countFiller=true]   include gold/energy/tokens/boosts
+   * @param {boolean} [p.options.firstPurchase=false] Bank x2 first-purchase bonus available
+   * @param {number}  [p.options.firstPurchaseMultiplier=2]
+   * @param {object}  [p.options.overrides]          { itemKey: gems } user-edited values
+   */
+  function evaluate(p) {
+    const o = Object.assign({ countFiller: true, firstPurchase: false, firstPurchaseMultiplier: 2, overrides: {} }, p.options || {});
+    const breakdown = [];
+    const unpriced = [];
+    let gemValue = 0, fillerValue = 0;
+
+    for (const key of Object.keys(p.contents || {})) {
+      const qty = Number(p.contents[key]) || 0;
+      if (qty <= 0) continue;
+      const item = p.items[key];
+      if (!item) continue;
+      const unit = (key in o.overrides && o.overrides[key] != null) ? Number(o.overrides[key]) : item.gems;
+      const row = { key, name: item.name, qty, unit, filler: !!item.filler, estimate: !!item.estimate, unpriced: unit == null, value: 0, counted: true };
+      if (unit == null) {
+        unpriced.push(row);
+        row.counted = false;
+      } else {
+        row.value = qty * unit;
+        if (row.filler) {
+          fillerValue += row.value;
+          if (!o.countFiller) row.counted = false;
+        }
+        if (row.counted) gemValue += row.value;
+      }
+      breakdown.push(row);
+    }
+
+    const baseline = bankGems(p.price, p.bank, o);
+    const free = !(p.price > 0);
+    const multiplier = free ? Infinity : (baseline > 0 ? gemValue / baseline : 0);
+    const verdict = free ? (gemValue > 0 ? 'Free' : '') : verdictFor(multiplier, p.verdictBands);
+
+    breakdown.sort((a, b) => b.value - a.value);
+    return {
+      price: p.price,
+      gemValue,
+      fillerValue,
+      bankGems: baseline,
+      multiplier,
+      verdict,
+      free,
+      hasUnpriced: unpriced.length > 0,
+      unpriced,
+      breakdown,
+      gemsPerDollar: p.price > 0 ? gemValue / p.price : Infinity,
+    };
+  }
+
+  /** Known packs with identical contents; exact price match flagged. */
+  function matchPacks(contents, price, packs) {
+    const norm = (c) => Object.keys(c).filter((k) => Number(c[k]) > 0).sort().map((k) => k + '=' + Number(c[k])).join('|');
+    const sig = norm(contents || {});
+    if (!sig) return [];
+    return packs
+      .filter((pk) => norm(pk.contents) === sig)
+      .map((pk) => ({ pack: pk, samePrice: Math.abs(pk.price - price) < 0.005 }));
+  }
+
+  return { bankGems, verdictFor, evaluate, matchPacks };
+});
+</script>
+<script>
+const DATA = {"game":"Invokers: Titan Legacy","updated":"2026-10-30","notes":"Values in gem-equivalents. multiplier = gem_value / gems the same price buys in the Bank (interpolated). gems:null = not priced yet. filler items only count if the player would spend gems on them.","verdict_bands":[{"min":3,"label":"Great"},{"min":2,"label":"Good"},{"min":1.5,"label":"Okay"},{"min":1,"label":"Weak"},{"min":0,"label":"Skip"}],"bank":[{"price":4.99,"gems":420},{"price":9.99,"gems":840},{"price":19.99,"gems":1740},{"price":29.99,"gems":2740},{"price":49.99,"gems":4820},{"price":99.99,"gems":10000}],"bank_first_purchase_multiplier":2,"items":{"divine_star":{"name":"Divine Star","gems":4000,"estimate":true},"radiant_star":{"name":"Radiant Star","gems":350,"estimate":true},"destiny_star":{"name":"Destiny Star","gems":300},"fate_star":{"name":"Fate Star","gems":150,"estimate":true},"miracle_orb":{"name":"Miracle Orb","gems":5000},"wonder_orb":{"name":"Wonder Orb","gems":500},"dream_orb":{"name":"Dream Orb","gems":250,"estimate":true},"legendary_codex":{"name":"Legendary Codex","gems":500},"epic_codex":{"name":"Epic Codex","gems":333.33},"rare_codex":{"name":"Rare Codex","gems":166.67},"legendary_prism":{"name":"Legendary Prism","gems":500},"epic_prism":{"name":"Epic Prism","gems":333.33},"rare_prism":{"name":"Rare Prism","gems":166.67},"gems":{"name":"Gems","gems":1},"gold":{"name":"Gold","gems":0.00025,"filler":true},"memorium":{"name":"Memorium","gems":0.1,"filler":true},"energy":{"name":"Energy","gems":0.5,"filler":true},"multi_battle_token":{"name":"Multi-Battle Token","gems":2.5,"filler":true},"arena_token":{"name":"Arena Token","gems":5,"filler":true},"xp_boost_3d":{"name":"3-day XP Boost","gems":800,"filler":true},"xp_boost_1d":{"name":"1-day XP Boost","gems":400,"filler":true},"gold_boost_3d":{"name":"3-day Gold Boost","gems":800,"filler":true},"gold_boost_1d":{"name":"1-day Gold Boost","gems":400,"filler":true},"titan_spark":{"name":"Titan Spark","gems":null},"large_xp_potion":{"name":"Large XP Potion","gems":null},"champion_fodder":{"name":"Star-rated champion fodder","gems":null},"dragonsoul_3star":{"name":"3-star Dragonsoul","gems":null}},"packs":[{"name":"Destiny Pack","price":9.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"destiny_star":1,"gems":900},"gem_value":1200,"multiplier":1.43,"has_unpriced":false},{"name":"Destiny Hyper Pack","price":29.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"destiny_star":3,"gems":2500},"gem_value":3400,"multiplier":1.24,"has_unpriced":false},{"name":"Destiny Super Pack","price":49.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"destiny_star":6,"gems":4500},"gem_value":6300,"multiplier":1.31,"has_unpriced":false},{"name":"Destiny Ultra Pack","price":99.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"destiny_star":15,"gems":9500},"gem_value":14000,"multiplier":1.4,"has_unpriced":false},{"name":"Radiant Pack","price":29.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"radiant_star":1,"gems":2500},"gem_value":2850,"multiplier":1.04,"has_unpriced":false},{"name":"Radiant Hyper Pack","price":49.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"radiant_star":2,"gems":4500},"gem_value":5200,"multiplier":1.08,"has_unpriced":false},{"name":"Radiant Super Pack","price":74.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"radiant_star":3,"gems":7000},"gem_value":8050,"multiplier":1.09,"has_unpriced":false},{"name":"Radiant Ultra Pack","price":99.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"radiant_star":5,"gems":9500},"gem_value":11250,"multiplier":1.12,"has_unpriced":false},{"name":"Wonder Pack","price":29.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"wonder_orb":1,"gems":2500},"gem_value":3000,"multiplier":1.09,"has_unpriced":false},{"name":"Hyper Wonder Pack","price":59.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"wonder_orb":2,"gems":5000},"gem_value":6000,"multiplier":1.03,"has_unpriced":false},{"name":"Super Wonder Pack","price":89.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"wonder_orb":3,"gems":8000},"gem_value":9500,"multiplier":1.06,"has_unpriced":false},{"name":"Ultra Wonder Pack","price":119.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"wonder_orb":4,"gems":11000},"gem_value":13000,"multiplier":1.08,"has_unpriced":false},{"name":"Dream Pack","price":14.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"dream_orb":1,"gems":1300},"gem_value":1550,"multiplier":1.21,"has_unpriced":false},{"name":"Hyper Dream Pack","price":29.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"dream_orb":2,"gems":2500},"gem_value":3000,"multiplier":1.09,"has_unpriced":false},{"name":"Super Dream Pack","price":44.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"dream_orb":3,"gems":4000},"gem_value":4750,"multiplier":1.11,"has_unpriced":false},{"name":"Ultra Dream Pack","price":99.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"dream_orb":6,"gems":9500},"gem_value":11000,"multiplier":1.1,"has_unpriced":false},{"name":"Gold Pack","price":9.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"gold":2000000,"gems":900},"gem_value":1400,"multiplier":1.67,"has_unpriced":false},{"name":"Hyper Gold Pack","price":29.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"gold":6000000,"gems":2700},"gem_value":4200,"multiplier":1.53,"has_unpriced":false},{"name":"Super Gold Pack","price":49.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"gold":10000000,"gems":4500},"gem_value":7000,"multiplier":1.45,"has_unpriced":false},{"name":"Ultra Gold Pack","price":99.99,"category":"special","limit":"monthly 10","logged":null,"contents":{"gold":20000000,"gems":9500},"gem_value":14500,"multiplier":1.45,"has_unpriced":false},{"name":"Rare Codexes","price":4.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"rare_codex":9},"gem_value":1500,"multiplier":3.57,"has_unpriced":false},{"name":"Epic Codex Mix","price":14.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"epic_codex":9,"rare_codex":9},"gem_value":4500,"multiplier":3.51,"has_unpriced":false},{"name":"Legendary Codex Mix","price":24.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"legendary_codex":9,"epic_codex":9,"rare_codex":9},"gem_value":9000,"multiplier":4.04,"has_unpriced":false},{"name":"Rare Prisms","price":4.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"rare_prism":9},"gem_value":1500,"multiplier":3.57,"has_unpriced":false},{"name":"Epic Prism Mix","price":14.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"epic_prism":9,"rare_prism":9},"gem_value":4500,"multiplier":3.51,"has_unpriced":false},{"name":"Legendary Prism Mix","price":24.99,"category":"special","limit":"monthly 20","logged":null,"contents":{"legendary_prism":9,"epic_prism":9,"rare_prism":9},"gem_value":9000,"multiplier":4.04,"has_unpriced":false},{"name":"Starter Pack","price":29.99,"category":"hot","limit":"once","logged":null,"contents":{"divine_star":1,"radiant_star":1,"destiny_star":10},"gem_value":7350,"multiplier":2.68,"has_unpriced":false},{"name":"Super Starter Pack","price":49.99,"category":"hot","limit":"once","logged":null,"contents":{"divine_star":1,"radiant_star":1,"destiny_star":20},"gem_value":10350,"multiplier":2.15,"has_unpriced":false},{"name":"Deluxe Starter Pack","price":99.99,"category":"hot","limit":"once","logged":null,"contents":{"divine_star":1,"radiant_star":2,"destiny_star":50},"gem_value":19700,"multiplier":1.97,"has_unpriced":false},{"name":"Titan Starter Set I","price":49.99,"category":"hot","limit":"once","logged":null,"contents":{"miracle_orb":1,"wonder_orb":6},"gem_value":8000,"multiplier":1.66,"has_unpriced":false},{"name":"Titan Starter Set II","price":99.99,"category":"hot","limit":"once","logged":null,"contents":{"miracle_orb":1,"wonder_orb":16},"gem_value":13000,"multiplier":1.3,"has_unpriced":false},{"name":"Ascension Pack","price":19.99,"category":"hot","limit":"monthly 20","logged":null,"contents":{"champion_fodder":4,"large_xp_potion":10,"gold":150000},"gem_value":38,"multiplier":0.02,"has_unpriced":true},{"name":"Mega Ascension Pack","price":49.99,"category":"hot","limit":"monthly 10","logged":null,"contents":{"champion_fodder":2,"large_xp_potion":10,"gold":300000},"gem_value":75,"multiplier":0.02,"has_unpriced":true},{"name":"Deluxe Ascension Pack","price":99.99,"category":"hot","limit":"monthly 5","logged":null,"contents":{"champion_fodder":5,"large_xp_potion":20,"gold":600000},"gem_value":150,"multiplier":0.01,"has_unpriced":true},{"name":"Invoker Skill Set","price":49.99,"category":"exclusive","limit":"5","logged":"2026-10-01","contents":{"legendary_codex":20,"epic_codex":20,"rare_codex":30,"gold":100000},"gem_value":21692,"multiplier":4.5,"has_unpriced":false},{"name":"Weekly Booster","price":19.99,"category":"exclusive","limit":"1","logged":"2026-10-01, 2026-10-23, 2026-10-30","contents":{"divine_star":1,"destiny_star":3,"energy":1000},"gem_value":5400,"multiplier":3.1,"has_unpriced":false},{"name":"Autumn Assault (v1)","price":19.99,"category":"exclusive","limit":"1","logged":"2026-10-01","contents":{"destiny_star":5,"fate_star":10,"energy":1000,"gold":2000000,"multi_battle_token":100},"gem_value":4250,"multiplier":2.44,"has_unpriced":false},{"name":"Monthly Summon Booster","price":29.99,"category":"exclusive","limit":"1","logged":"2026-10-01","contents":{"divine_star":1,"destiny_star":5,"radiant_star":1,"gems":500,"energy":1000},"gem_value":6850,"multiplier":2.5,"has_unpriced":false},{"name":"Radiant Star Pack","price":49.99,"category":"exclusive","limit":"5","logged":"2026-10-01","contents":{"radiant_star":4,"gems":4000,"xp_boost_3d":1},"gem_value":6200,"multiplier":1.29,"has_unpriced":false},{"name":"Titan Charge Set","price":29.99,"category":"exclusive","limit":"5","logged":"2026-10-01","contents":{"epic_prism":16,"rare_prism":22,"gold":1000000,"titan_spark":1000},"gem_value":9250,"multiplier":3.38,"has_unpriced":true},{"name":"Boss Battle Pack","price":9.99,"category":"exclusive","limit":"10","logged":"2026-10-01, 2026-10-30 (XP boost instead of Gold boost)","contents":{"energy":1000,"multi_battle_token":50,"gold_boost_1d":1},"gem_value":1025,"multiplier":1.22,"has_unpriced":false},{"name":"Relic Upgrade Pack","price":9.99,"category":"exclusive","limit":"10","logged":"2026-10-01, 2026-10-30","contents":{"gold":4000000,"memorium":8000,"energy":100,"multi_battle_token":10},"gem_value":1875,"multiplier":2.23,"has_unpriced":false},{"name":"Epic Codex Pack","price":29.99,"category":"exclusive","limit":"3","logged":"2026-10-01","contents":{"epic_codex":15,"rare_codex":20,"gold":600000},"gem_value":8483,"multiplier":3.1,"has_unpriced":false},{"name":"Giant Gem Set","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-01","contents":{"gems":2000},"gem_value":2000,"multiplier":2.38,"has_unpriced":false},{"name":"Energy Pack","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-01","contents":{"gems":400,"energy":600},"gem_value":700,"multiplier":0.83,"has_unpriced":false},{"name":"Giant Gem Set","price":34.99,"category":"exclusive","limit":"2","logged":"2026-10-02","contents":{"gems":7000},"gem_value":7000,"multiplier":2.16,"has_unpriced":false},{"name":"Divine Star Pack","price":49.99,"category":"exclusive","limit":"3","logged":"2026-10-02","contents":{"divine_star":1,"destiny_star":25,"gems":1200,"xp_boost_1d":1},"gem_value":13100,"multiplier":2.72,"has_unpriced":false},{"name":"Titan Spark Set","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-19","contents":{"titan_spark":2500,"large_xp_potion":30,"gems":500},"gem_value":500,"multiplier":0.6,"has_unpriced":true},{"name":"Energy Pack","price":4.99,"category":"exclusive","limit":"3","logged":"2026-10-19","contents":{"gems":300,"energy":300},"gem_value":450,"multiplier":1.07,"has_unpriced":false},{"name":"Destiny Star Pack","price":14.99,"category":"exclusive","limit":"3","logged":"2026-10-19","contents":{"destiny_star":5,"gems":1200,"xp_boost_1d":1},"gem_value":3100,"multiplier":2.42,"has_unpriced":false},{"name":"Legendary Codex Pack","price":29.99,"category":"exclusive","limit":"3","logged":"2026-10-19","contents":{"legendary_codex":8,"epic_codex":15,"rare_codex":18,"gold":400000},"gem_value":12100,"multiplier":4.42,"has_unpriced":false},{"name":"Titan Miracle Pack","price":29.99,"category":"exclusive","limit":"3","logged":"2026-10-19","contents":{"miracle_orb":2,"wonder_orb":3,"gems":900,"xp_boost_1d":1},"gem_value":12800,"multiplier":4.67,"has_unpriced":false},{"name":"Invoker Upgrade Pack","price":49.99,"category":"exclusive","limit":"10","logged":"2026-10-19","contents":{"legendary_codex":15,"epic_codex":30,"rare_codex":40,"champion_fodder":4,"large_xp_potion":50},"gem_value":24167,"multiplier":5.01,"has_unpriced":true},{"name":"Autumn Assault (v2)","price":9.99,"category":"exclusive","limit":"1","logged":"2026-10-19","contents":{"divine_star":1,"radiant_star":1,"destiny_star":3},"gem_value":5250,"multiplier":6.25,"has_unpriced":false},{"name":"Invoker Summon Pack","price":49.99,"category":"exclusive","limit":"10","logged":"2026-10-19","contents":{"divine_star":2,"radiant_star":3,"destiny_star":8},"gem_value":11450,"multiplier":2.38,"has_unpriced":false},{"name":"Epic Codex Pack","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"epic_codex":10,"rare_codex":10,"gold":200000},"gem_value":5050,"multiplier":6.01,"has_unpriced":false},{"name":"Invoker Summon Pack","price":9.99,"category":"exclusive","limit":"10","logged":"2026-10-23, 2026-10-30","contents":{"divine_star":1,"radiant_star":1,"destiny_star":1},"gem_value":4650,"multiplier":5.54,"has_unpriced":false},{"name":"Autumn Assault (v3)","price":9.99,"category":"exclusive","limit":"1","logged":"2026-10-23, 2026-10-30","contents":{"divine_star":1,"radiant_star":1,"destiny_star":1},"gem_value":4650,"multiplier":5.54,"has_unpriced":false},{"name":"Titan Legend Pack","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"legendary_prism":1,"epic_prism":5,"rare_prism":8,"gold":100000},"gem_value":3525,"multiplier":4.2,"has_unpriced":false},{"name":"Divine Star Pack","price":19.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"divine_star":1,"destiny_star":5,"gems":900},"gem_value":6400,"multiplier":3.68,"has_unpriced":false},{"name":"Titan Upgrade Pack","price":9.99,"category":"exclusive","limit":"10","logged":"2026-10-23","contents":{"epic_prism":4,"rare_prism":10,"large_xp_potion":10,"titan_spark":500,"dragonsoul_3star":3},"gem_value":3000,"multiplier":3.57,"has_unpriced":true},{"name":"Super Summon Set","price":49.99,"category":"exclusive","limit":"2","logged":"2026-10-23","contents":{"divine_star":1,"destiny_star":20,"fate_star":30},"gem_value":14500,"multiplier":3.01,"has_unpriced":false},{"name":"Treasure Pile","price":19.99,"category":"exclusive","limit":"2","logged":"2026-10-23","contents":{"gems":5000,"gold":1000000},"gem_value":5250,"multiplier":3.02,"has_unpriced":false},{"name":"Titan Summon Set","price":99.99,"category":"exclusive","limit":"2","logged":"2026-10-23","contents":{"miracle_orb":2,"wonder_orb":20,"dream_orb":30},"gem_value":27500,"multiplier":2.75,"has_unpriced":false},{"name":"Titan Summon Pack","price":29.99,"category":"exclusive","limit":"10","logged":"2026-10-23","contents":{"miracle_orb":1,"wonder_orb":1,"dream_orb":5},"gem_value":6750,"multiplier":2.46,"has_unpriced":false},{"name":"Giant Gem Set","price":4.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"gems":1000},"gem_value":1000,"multiplier":2.38,"has_unpriced":false},{"name":"Divine Radiance Set","price":49.99,"category":"exclusive","limit":"2","logged":"2026-10-23","contents":{"divine_star":1,"radiant_star":2,"destiny_star":15,"gems":2000,"gold":2000000},"gem_value":11700,"multiplier":2.43,"has_unpriced":false},{"name":"Titan Wonder Pack","price":9.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"wonder_orb":2,"gems":1000},"gem_value":2000,"multiplier":2.38,"has_unpriced":false},{"name":"Boss Battle Pack","price":4.99,"category":"exclusive","limit":"10","logged":"2026-10-23","contents":{"energy":600,"multi_battle_token":40,"gold_boost_1d":1},"gem_value":800,"multiplier":1.9,"has_unpriced":false},{"name":"Weekend Super Summons","price":5.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"destiny_star":3},"gem_value":900,"multiplier":1.79,"has_unpriced":false},{"name":"Energy Pack","price":4.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"gems":300,"energy":250},"gem_value":425,"multiplier":1.01,"has_unpriced":false},{"name":"Titan Spark Set","price":4.99,"category":"exclusive","limit":"3","logged":"2026-10-23","contents":{"titan_spark":1500,"large_xp_potion":20,"gems":300},"gem_value":300,"multiplier":0.71,"has_unpriced":true},{"name":"Umbral Bundle","price":49.99,"category":"exclusive","limit":"2","logged":"2026-10-23, 2026-10-30","contents":{"radiant_star":6},"gem_value":2100,"multiplier":0.44,"has_unpriced":false},{"name":"Skill Booster Set","price":9.99,"category":"exclusive","limit":"1","logged":"2026-10-30","contents":{"epic_codex":10,"rare_codex":23,"gold":100000,"energy":250,"multi_battle_token":25},"gem_value":7379,"multiplier":8.78,"has_unpriced":false},{"name":"Hero Trainer Pack","price":9.99,"category":"exclusive","limit":"5","logged":"2026-10-30","contents":{"legendary_codex":3,"epic_codex":4,"rare_codex":10,"gold":200000},"gem_value":4550,"multiplier":5.42,"has_unpriced":false},{"name":"Halloween Pack","price":9.99,"category":"exclusive","limit":"1","logged":"2026-10-30","contents":{"divine_star":1,"wonder_orb":1},"gem_value":4500,"multiplier":5.36,"has_unpriced":false},{"name":"Arena Fighter Pack","price":4.99,"category":"exclusive","limit":"10","logged":"2026-10-30","contents":{"arena_token":100,"gems":200},"gem_value":700,"multiplier":1.67,"has_unpriced":false},{"name":"Divine Star Pack (2 Divine)","price":19.99,"category":"exclusive","limit":"3","logged":"2026-10-30","contents":{"divine_star":2,"destiny_star":5,"gems":900},"gem_value":10400,"multiplier":5.98,"has_unpriced":false},{"name":"Frightfest Pack","price":9.99,"category":"exclusive","limit":"10","logged":"2026-10-30","contents":{"large_xp_potion":8,"epic_codex":3,"rare_codex":10,"champion_fodder":4},"gem_value":2667,"multiplier":3.17,"has_unpriced":true},{"name":"Orb Cache","price":19.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"miracle_orb":1,"wonder_orb":3,"gems":2000,"gold":2000000,"titan_spark":150},"gem_value":9000,"multiplier":5.17,"has_unpriced":true},{"name":"Orb Bundle","price":9.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"wonder_orb":3,"dream_orb":10,"gold":100000,"titan_spark":150},"gem_value":4025,"multiplier":4.79,"has_unpriced":true},{"name":"Starter Pack I","price":19.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"divine_star":1,"destiny_star":5,"gems":2000,"gold":2000000},"gem_value":8000,"multiplier":4.6,"has_unpriced":false},{"name":"Starter Pack II","price":14.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"destiny_star":5,"fate_star":20,"large_xp_potion":15},"gem_value":4500,"multiplier":3.51,"has_unpriced":true},{"name":"Starter Pack III","price":24.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"divine_star":1,"radiant_star":3,"gems":500,"large_xp_potion":20},"gem_value":5550,"multiplier":2.49,"has_unpriced":true},{"name":"Starter Pack IV","price":19.99,"category":"starter","limit":"2","logged":"2026-10-23","contents":{"divine_star":1,"destiny_star":3,"radiant_star":2},"gem_value":5600,"multiplier":3.22,"has_unpriced":false},{"name":"Destiny Booster Pack","price":9.99,"category":"starter","limit":"3","logged":"2026-10-23","contents":{"destiny_star":3,"fate_star":10,"gold":1000000,"large_xp_potion":5},"gem_value":2650,"multiplier":3.15,"has_unpriced":true},{"name":"Summon Calendar (5d)","price":29.99,"category":"calendar","limit":null,"logged":null,"contents":{"divine_star":1,"radiant_star":2,"fate_star":20,"gems":1000,"destiny_star":12},"gem_value":12300,"multiplier":4.49,"has_unpriced":false},{"name":"Gem Calendar (30d)","price":9.99,"category":"calendar","limit":null,"logged":null,"contents":{"gems":3000},"gem_value":3000,"multiplier":3.57,"has_unpriced":false},{"name":"Weekly Battle Calendar (7d)","price":14.99,"category":"calendar","limit":null,"logged":null,"contents":{"energy":2800,"multi_battle_token":280},"gem_value":2100,"multiplier":1.64,"has_unpriced":false},{"name":"Monthly Battle Calendar (30d)","price":49.99,"category":"calendar","limit":null,"logged":null,"contents":{"energy":12000,"multi_battle_token":1200},"gem_value":9000,"multiplier":1.87,"has_unpriced":false}]};
+const C = window.OfferCalc;
+const items = DATA.items;
+const GROUPS = [
+  ['Invoker stars', ['divine_star', 'radiant_star', 'destiny_star', 'fate_star']],
+  ['Titan orbs', ['miracle_orb', 'wonder_orb', 'dream_orb']],
+  ['Codexes (invoker skills)', ['legendary_codex', 'epic_codex', 'rare_codex']],
+  ['Prisms (titan skills)', ['legendary_prism', 'epic_prism', 'rare_prism']],
+  ['Currency', ['gems', 'gold', 'memorium']],
+  ['Filler', ['energy', 'multi_battle_token', 'arena_token', 'xp_boost_1d', 'xp_boost_3d', 'gold_boost_1d', 'gold_boost_3d']],
+  ['Unpriced (not counted yet)', ['titan_spark', 'large_xp_potion', 'champion_fodder', 'dragonsoul_3star']],
+];
+const PRICES = [4.99, 9.99, 14.99, 19.99, 29.99, 49.99, 99.99];
+const CATS = { special: 'Special offers', hot: 'Hot deals', exclusive: 'Exclusive deals', starter: 'Starter tab', calendar: 'Calendars' };
+
+const state = { contents: {}, overrides: {}, countFiller: true, firstPurchase: false, cat: 'all', q: '', sortK: 'multiplier', sortDir: -1 };
+try { Object.assign(state.overrides, JSON.parse(localStorage.getItem('invokers-offer-overrides') || '{}')); } catch (e) {}
+
+const $ = (s) => document.querySelector(s);
+const fmt = (n, d = 0) => n == null || !isFinite(n) ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: 0 });
+const fmtK = (n) => !isFinite(n) ? '—' : Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : Math.abs(n) >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'K' : fmt(n, 1);
+const money = (p) => p > 0 ? '$' + p.toFixed(2) : 'Free';
+const vclass = (v) => 'v-' + (v || 'none').toLowerCase();
+const pclass = (v) => 'p-' + (v || 'none').toLowerCase();
+const unitOf = (k) => (k in state.overrides && state.overrides[k] != null) ? state.overrides[k] : items[k].gems;
+const options = () => ({ countFiller: state.countFiller, firstPurchase: state.firstPurchase, firstPurchaseMultiplier: DATA.bank_first_purchase_multiplier, overrides: state.overrides });
+const evalPack = (price, contents) => C.evaluate({ price, contents, items, bank: DATA.bank, verdictBands: DATA.verdict_bands, options: options() });
+const describe = (contents) => Object.keys(contents).filter(k => contents[k] > 0).map(k => fmtK(contents[k]) + ' ' + items[k].name.replace(/^Star-rated champion fodder$/, 'champion fodder')).join(', ');
+
+$('#updated').textContent = DATA.updated;
+
+/* ---------- pack inputs ---------- */
+function buildInputs() {
+  const g = $('#groups');
+  g.innerHTML = '';
+  for (const [title, keys] of GROUPS) {
+    const sec = document.createElement('div'); sec.className = 'group';
+    sec.innerHTML = `<h3>${title}</h3><div class="items"></div>`;
+    const list = sec.querySelector('.items');
+    for (const k of keys) {
+      const it = items[k];
+      const el = document.createElement('div'); el.className = 'item'; el.dataset.k = k;
+      el.innerHTML = `<div class="nm">${it.name}</div><div class="val"></div><input class="unit" type="number" inputmode="decimal" step="any" min="0" title="Gem value per unit" placeholder="gems each"><input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="${it.name} quantity">`;
+      list.appendChild(el);
+    }
+    g.appendChild(sec);
+  }
+  refreshUnitLabels();
+}
+function refreshUnitLabels() {
+  document.querySelectorAll('.item').forEach(el => {
+    const k = el.dataset.k, it = items[k], u = unitOf(k), changed = k in state.overrides && state.overrides[k] != null && state.overrides[k] !== it.gems;
+    const val = el.querySelector('.val');
+    if (u == null) val.innerHTML = '<span class="np">no gem value yet</span>';
+    else {
+      const per = k === 'gold' ? `<b>${fmt(u * 1e6)}</b> per 1M` : k === 'gems' ? '1:1' : `<b>${fmt(u, 2)}</b> each`;
+      val.innerHTML = per + (it.estimate ? ' <span class="est" title="Estimated from summon odds, not a shop price">est.</span>' : '') + (changed ? ' <span class="est">(edited)</span>' : '');
+    }
+    const unitIn = el.querySelector('.unit');
+    unitIn.value = u == null ? '' : (k === 'gold' ? u * 1e6 : u);
+    unitIn.placeholder = k === 'gold' ? 'gems per 1M gold' : 'gems each';
+  });
+}
+
+$('#groups').addEventListener('input', (e) => {
+  const el = e.target.closest('.item'); if (!el) return;
+  const k = el.dataset.k;
+  if (e.target.classList.contains('qty')) {
+    const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
+    if (v > 0) state.contents[k] = v; else delete state.contents[k];
+    el.classList.toggle('has', v > 0);
+  } else if (e.target.classList.contains('unit')) {
+    const raw = e.target.value.trim();
+    if (raw === '') state.overrides[k] = null;
+    else { let v = Number(raw); if (k === 'gold') v = v / 1e6; state.overrides[k] = isFinite(v) ? v : null; }
+    saveOverrides(); refreshUnitLabels();
+  }
+  render();
+});
+$('#price').addEventListener('input', render);
+
+const chips = $('#price-chips');
+for (const p of PRICES) { const b = document.createElement('button'); b.className = 'chip'; b.textContent = '$' + p.toFixed(2); b.dataset.p = p; b.onclick = () => { $('#price').value = p; render(); }; chips.appendChild(b); }
+
+$('#clear').onclick = () => { state.contents = {}; document.querySelectorAll('.item').forEach(el => { el.classList.remove('has'); el.querySelector('.qty').value = ''; }); render(); };
+$('#edit-values').onclick = () => { const on = document.body.classList.toggle('editing'); $('#edit-values').textContent = on ? 'Done editing values' : 'Edit item values'; $('#reset-values').hidden = !on; };
+$('#reset-values').onclick = () => { state.overrides = {}; saveOverrides(); refreshUnitLabels(); render(); };
+$('#opt-filler').onchange = (e) => { state.countFiller = e.target.checked; render(); };
+$('#opt-first').onchange = (e) => { state.firstPurchase = e.target.checked; render(); };
+function saveOverrides() { try { localStorage.setItem('invokers-offer-overrides', JSON.stringify(state.overrides)); } catch (e) {} }
+
+/* ---------- result ---------- */
+function render() {
+  const price = Math.max(0, Number($('#price').value) || 0);
+  document.querySelectorAll('#price-chips .chip').forEach(c => c.classList.toggle('on', Math.abs(Number(c.dataset.p) - price) < 0.005));
+  const r = evalPack(price, state.contents);
+  const empty = Object.keys(state.contents).length === 0;
+  const v = $('#verdict'); v.className = 'verdict ' + (empty ? '' : vclass(r.verdict));
+
+  if (empty) {
+    $('#mult').textContent = '—'; $('#label').textContent = 'Enter a pack'; $('#sub').textContent = 'Set the price and what\'s inside.';
+  } else if (r.free) {
+    $('#mult').textContent = 'Free'; $('#label').textContent = 'Take it'; $('#sub').textContent = `Worth about ${fmt(r.gemValue)} gems for nothing.`;
+  } else if (r.gemValue === 0 && r.hasUnpriced) {
+    v.className = 'verdict'; $('#mult').textContent = '?'; $('#label').textContent = 'Unpriced'; $('#sub').textContent = 'Everything in this pack still needs a gem value.';
+  } else {
+    $('#mult').innerHTML = `${r.multiplier.toFixed(r.multiplier >= 10 ? 1 : 2)}<small>×</small>${r.hasUnpriced ? '<small>+</small>' : ''}`;
+    $('#label').textContent = r.verdict;
+    $('#sub').textContent = subFor(r);
+  }
+  $('#gem-value').innerHTML = fmt(Math.round(r.gemValue)) + (r.hasUnpriced ? ' <small>+ unpriced</small>' : '');
+  $('#bank-value').innerHTML = price > 0 ? fmt(Math.round(r.bankGems)) + (state.firstPurchase ? ' <small>×2 first buy</small>' : '') : '—';
+  $('#gpd').textContent = price > 0 ? fmt(r.gemsPerDollar, 0) : '—';
+  $('#bank-gpd').textContent = price > 0 ? fmt(r.bankGems / price, 0) : '—';
+
+  const tb = $('#breakdown'); tb.innerHTML = '';
+  for (const row of r.breakdown) {
+    const tr = document.createElement('tr');
+    tr.className = row.unpriced ? 'np' : (!row.counted ? 'off' : '');
+    const tag = row.unpriced ? '<span class="tag">unpriced</span>' : (!row.counted ? '<span class="tag">filler, off</span>' : (row.estimate ? '<span class="tag">est.</span>' : ''));
+    tr.innerHTML = `<td>${fmtK(row.qty)} × ${row.name}${tag}</td><td>${row.unpriced ? '?' : fmt(Math.round(row.value))}</td>`;
+    tb.appendChild(tr);
+  }
+  const notes = [];
+  if (!empty && r.hasUnpriced) notes.push('<div class="note warn">Contains unpriced items, so the true multiplier is higher than shown.</div>');
+  if (!empty && !state.countFiller && r.fillerValue > 0) notes.push(`<div class="note">Filler excluded: ${fmt(Math.round(r.fillerValue))} gems of gold/energy/tokens/boosts not counted.</div>`);
+  if (!empty && price > 0 && r.breakdown.some(b => b.key === 'radiant_star')) {
+    const perRad = price / state.contents.radiant_star;
+    if (Object.keys(state.contents).length === 1) notes.push(`<div class="note">${money(perRad)} per Radiant. Under $1.75 is great, under $3.50 fair, above that overpriced.</div>`);
+  }
+  $('#notes').innerHTML = notes.join('');
+
+  const m = C.matchPacks(state.contents, price, DATA.packs);
+  $('#match').innerHTML = m.length ? `<div class="match">Matches logged pack${m.length > 1 ? 's' : ''}: ${m.map(x => `<b>${x.pack.name}</b> (${money(x.pack.price)}${x.pack.limit ? ', ' + (/^\d+$/.test(x.pack.limit) ? 'limit ' + x.pack.limit : x.pack.limit) : ''}${x.samePrice ? '' : ', different price'})`).join(' · ')}</div>` : '';
+  renderCatalog();
+}
+function subFor(r) {
+  const bands = DATA.verdict_bands.slice().sort((a, b) => a.min - b.min);
+  const i = bands.findIndex(b => b.label === r.verdict);
+  const next = bands[i + 1];
+  const base = `Worth ${r.multiplier.toFixed(2)}× what the same money buys in the Bank.`;
+  if (next) return `${base} ${next.label} starts at ${next.min}× (${fmt(Math.round(next.min * r.bankGems))} gems).`;
+  return base;
+}
+
+/* ---------- catalog ---------- */
+const catChips = $('#cat-chips');
+for (const [k, lab] of [['all', 'All'], ...Object.entries(CATS)]) { const b = document.createElement('button'); b.className = 'chip' + (k === 'all' ? ' on' : ''); b.textContent = lab; b.onclick = () => { state.cat = k; catChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === b)); renderCatalog(); }; catChips.appendChild(b); }
+$('#search').addEventListener('input', (e) => { state.q = e.target.value.trim().toLowerCase(); renderCatalog(); });
+document.querySelectorAll('table.cat th[data-k]').forEach(th => th.onclick = () => {
+  const k = th.dataset.k;
+  if (state.sortK === k) state.sortDir *= -1; else { state.sortK = k; state.sortDir = (k === 'multiplier' || k === 'price') ? -1 : 1; }
+  document.querySelectorAll('table.cat th').forEach(t => t.classList.toggle('sorted', t === th));
+  renderCatalog();
+});
+
+function renderCatalog() {
+  const rows = DATA.packs.map(pk => ({ pk, r: evalPack(pk.price, pk.contents), text: (pk.name + ' ' + describe(pk.contents) + ' ' + money(pk.price) + ' ' + (pk.limit || '') + ' ' + (CATS[pk.category] || '')).toLowerCase() }))
+    .filter(x => (state.cat === 'all' || x.pk.category === state.cat) && (!state.q || x.text.includes(state.q)));
+  rows.sort((a, b) => {
+    const k = state.sortK;
+    let av, bv;
+    if (k === 'multiplier') { av = a.r.multiplier; bv = b.r.multiplier; if (!isFinite(av)) av = 1e9; if (!isFinite(bv)) bv = 1e9; }
+    else if (k === 'price') { av = a.pk.price; bv = b.pk.price; }
+    else { av = String(a.pk[k] || ''); bv = String(b.pk[k] || ''); }
+    return (av > bv ? 1 : av < bv ? -1 : 0) * state.sortDir || a.pk.name.localeCompare(b.pk.name);
+  });
+  const tb = $('#cat-body'); tb.innerHTML = '';
+  for (const { pk, r } of rows) {
+    const tr = document.createElement('tr');
+    const mult = r.free ? 'Free' : r.gemValue === 0 ? '?' : r.multiplier.toFixed(r.multiplier >= 10 ? 1 : 2) + '×' + (r.hasUnpriced ? '+' : '');
+    const label = r.free ? 'Free' : r.gemValue === 0 ? '' : r.verdict;
+    tr.innerHTML = `<td><b>${pk.name}</b></td><td class="num">${money(pk.price)}</td><td class="contents">${describe(pk.contents)}</td><td class="limit">${pk.limit || '—'}</td><td class="num"><span class="pill ${pclass(label)}">${mult}</span></td><td class="limit">${pk.logged || '—'}</td>`;
+    tr.onclick = () => loadPack(pk);
+    tb.appendChild(tr);
+  }
+  $('#cat-count').textContent = `${rows.length} of ${DATA.packs.length} packs`;
+}
+function loadPack(pk) {
+  state.contents = Object.assign({}, pk.contents);
+  $('#price').value = pk.price;
+  document.querySelectorAll('.item').forEach(el => { const q = pk.contents[el.dataset.k] || 0; el.querySelector('.qty').value = q || ''; el.classList.toggle('has', q > 0); });
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+buildInputs();
+render();
+</script>
+</body>
+</html>
