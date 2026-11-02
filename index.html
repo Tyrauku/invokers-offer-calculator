@@ -68,6 +68,16 @@
   h2 { font: 700 15px/1 var(--display); text-transform: uppercase; letter-spacing: 1.6px; margin: 0; color: var(--gold); }
   .card-head .hint { color: var(--faint); font-size: 12.5px; }
   .sticky { position: sticky; top: 16px; }
+  .card-head.step2 { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
+  .price-input.need { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(217,171,60,.35); }
+  details.catalog > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
+  details.catalog > summary::-webkit-details-marker { display: none; }
+  details.catalog > summary::after { content: "▾"; color: var(--gold); font-size: 16px; transition: transform .15s; }
+  details.catalog[open] > summary::after { transform: rotate(180deg); }
+  details.catalog[open] > summary { margin-bottom: 14px; }
+  details.catalog > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+  .sum-title { display: grid; gap: 5px; flex: 1; min-width: 0; }
+  .sum-title .hint { color: var(--faint); font-size: 12.5px; }
 
   /* ---------- price ---------- */
   .price-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 6px; }
@@ -262,19 +272,19 @@
 
   <div class="grid">
     <section class="card">
-      <div class="card-head"><h2>Build the pack</h2><span class="hint">Set the price, then add what's inside</span></div>
+      <div class="card-head"><h2>Step 1 · Enter the pack's price</h2><span class="hint">Use the price shown in your shop</span></div>
       <div class="price-row">
-        <div class="price-input"><span class="sym" id="price-sym">$</span><input id="price" type="number" inputmode="decimal" min="0" step="0.01" value="9.99" aria-label="Pack price"></div>
-        <div class="chips" id="price-chips"></div>
+        <div class="price-input"><span class="sym" id="price-sym">$</span><input id="price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Price" aria-label="Pack price"></div>
       </div>
       <div class="calib" id="calib" hidden>
         <label for="calib-input"><b>Your Bank price for 840 gems</b></label>
         <input id="calib-input" type="number" inputmode="decimal" min="0" step="any" placeholder="optional">
         <span class="state" id="calib-state"></span>
       </div>
+      <div class="card-head step2"><h2>Step 2 · Enter what's inside</h2><span class="hint">Type how many of each item the pack has</span></div>
       <div id="groups"></div>
       <div class="btns">
-        <button class="btn" id="clear">Clear pack</button>
+        <button class="btn" id="clear">Start over</button>
         <button class="btn" id="edit-values">Edit item values</button>
         <button class="btn" id="reset-values" hidden>Reset values to defaults</button>
       </div>
@@ -305,8 +315,8 @@
     </aside>
   </div>
 
-  <section class="card catalog">
-    <div class="card-head"><h2>Logged packs</h2><span class="cat-count" id="cat-count"></span></div>
+  <details class="card catalog">
+    <summary><span class="sum-title"><h2>Optional · Browse logged packs</h2><span class="hint">See how packs we've already recorded compare</span></span><span class="cat-count" id="cat-count"></span></summary>
     <div class="cat-head">
       <input class="search" id="search" type="search" placeholder="Search packs or contents, e.g. divine, codex, $9.99">
       <div class="chips" id="cat-chips"></div>
@@ -323,7 +333,7 @@
       <span>Tap a row to load it.</span>
       <span class="pill p-great">2×+ Great</span><span class="pill p-good">1.5× Good</span><span class="pill p-okay">1.2× Okay</span><span class="pill p-weak">1× Normal price, Weak</span><span class="pill p-skip">Under 1× Skip</span>
     </div>
-  </section>
+  </details>
 
   <footer>
     <span>Fan-made tool. Every item has one fixed price, worked out from what logged shop packs charge. The multiplier is a pack's total worth divided by its price, so 1× is the normal shop rate. Items marked <span style="color:var(--okay)">est.</span> have little or conflicting pack data. Other currencies use today's exchange rate unless you enter your own Bank price. Not affiliated with the game's publisher.</span>
@@ -432,7 +442,6 @@ const GROUPS = [
   ['Filler', ['energy', 'multi_battle_token', 'arena_token', 'xp_boost_1d', 'xp_boost_3d', 'gold_boost_1d', 'gold_boost_3d']],
   ['Upgrade materials', ['titan_spark', 'large_xp_potion', 'champion_fodder', 'dragonsoul_3star']],
 ];
-const PRICES = [4.99, 9.99, 14.99, 19.99, 29.99, 49.99, 99.99];
 const CATS = { special: 'Special offers', hot: 'Hot deals', exclusive: 'Exclusive deals', starter: 'Starter tab', calendar: 'Calendars' };
 
 /* Drawn glyphs for items the official pack has no icon for. Stroke icons, tinted by rarity. */
@@ -489,7 +498,7 @@ try {
 // gives the true local price level; when entered it replaces the exchange rate for that currency.
 const BANK_REF_USD = 9.99;
 try { state.calib = JSON.parse(localStorage.getItem('invokers-offer-calibration') || '{}') || {}; } catch (e) { state.calib = {}; }
-let lastUSD = BANK_REF_USD, priceTyped = false;
+let lastUSD = 0, priceTyped = false;
 const calibFor = (c) => c !== 'USD' && state.calib && state.calib[c] > 0 ? state.calib[c] / BANK_REF_USD : null;
 const rate = () => state.cur === 'USD' ? 1 : (calibFor(state.cur) || state.rates[state.cur] || 1);
 const curEff = () => (state.cur === 'USD' || calibFor(state.cur) || state.rates[state.cur]) ? state.cur : 'USD'; // falls back to USD when no rate is known
@@ -555,7 +564,6 @@ function applyCurrency(fromCalib) {
   const st = $('#calib-state');
   st.className = 'state ' + (own ? 'ok' : 'warn');
   st.textContent = own ? 'Using your Bank price, so results match your region.' : 'Using the exchange rate. Store prices vary by region, so the verdict is approximate until you enter this.';
-  document.querySelectorAll('#price-chips .chip').forEach(c => { c.textContent = moneyUSD(Number(c.dataset.p)); c.title = `$${Number(c.dataset.p).toFixed(2)} Bank tier`; });
   refreshUnitLabels();
   render();
 }
@@ -592,7 +600,7 @@ function buildInputs() {
       const it = items[k];
       const el = document.createElement('div'); el.className = 'item'; el.dataset.k = k;
       el.innerHTML = `${iconHTML(k)}<div class="txt"><div class="nm" title="${it.name}">${it.name}</div><div class="val"></div></div>
-        <div class="step"><button type="button" data-d="-1" aria-label="Remove one ${it.name}">−</button><input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="${it.name} quantity"><button type="button" data-d="1" aria-label="Add one ${it.name}">+</button></div>
+        <div class="step"><button type="button" data-d="-1" aria-label="Remove one ${it.name}">−</button><input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="–" aria-label="${it.name} quantity"><button type="button" data-d="1" aria-label="Add one ${it.name}">+</button></div>
         <input class="unit" type="number" inputmode="decimal" step="any" min="0" title="Value in USD" placeholder="USD each">`;
       list.appendChild(el);
     }
@@ -645,10 +653,8 @@ $('#groups').addEventListener('click', (e) => {
 });
 $('#price').addEventListener('input', () => { priceTyped = true; render(); });
 
-const chips = $('#price-chips');
-for (const p of PRICES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = '$' + p.toFixed(2); b.dataset.p = p; b.onclick = () => { lastUSD = p; priceTyped = false; $('#price').value = round2(localOf(p)); render(); }; chips.appendChild(b); }
 
-$('#clear').onclick = () => { state.contents = {}; document.querySelectorAll('.item').forEach(el => { el.classList.remove('has'); el.querySelector('.qty').value = ''; }); render(); };
+$('#clear').onclick = () => { $('#price').value = ''; lastUSD = 0; priceTyped = false; state.contents = {}; document.querySelectorAll('.item').forEach(el => { el.classList.remove('has'); el.querySelector('.qty').value = ''; }); render(); };
 $('#edit-values').onclick = () => { const on = document.body.classList.toggle('editing'); $('#edit-values').textContent = on ? 'Done editing values' : 'Edit item values'; $('#reset-values').hidden = !on; };
 $('#reset-values').onclick = () => { state.overrides = {}; saveOverrides(); refreshUnitLabels(); render(); };
 $('#opt-filler').onchange = (e) => { state.countFiller = e.target.checked; render(); };
@@ -658,15 +664,19 @@ function saveOverrides() { try { localStorage.setItem('invokers-offer-overrides-
 function render() {
   const priceLocal = Math.max(0, Number($('#price').value) || 0);
   const price = usdOf(priceLocal); // USD, for the Bank lookup
-  document.querySelectorAll('#price-chips .chip').forEach(c => c.classList.toggle('on', Math.abs(Number(c.dataset.p) - price) < 0.02));
   const r = evalPack(price, state.contents);
   const worthUSD = r.worthUSD;
   const empty = Object.keys(state.contents).length === 0;
-  const v = $('#verdict'); v.className = 'verdict ' + (empty ? '' : vclass(r.verdict));
-  $('#price-echo').textContent = empty ? '' : `${moneyLocal(priceLocal)} · ${Object.keys(state.contents).length} item type${Object.keys(state.contents).length === 1 ? '' : 's'}`;
+  const hasPrice = $('#price').value.trim() !== '';
+  const ready = hasPrice && !empty;
+  $('.price-input').classList.toggle('need', !hasPrice);
+  const v = $('#verdict'); v.className = 'verdict ' + (ready ? vclass(r.verdict) : '');
+  $('#price-echo').textContent = !ready ? '' : `${moneyLocal(priceLocal)} · ${Object.keys(state.contents).length} item type${Object.keys(state.contents).length === 1 ? '' : 's'}`;
 
-  if (empty) {
-    $('#mult').textContent = '—'; $('#label').textContent = 'Enter a pack'; $('#sub').textContent = 'Set the price and what\'s inside.';
+  if (!ready) {
+    $('#mult').textContent = '—';
+    $('#label').textContent = empty && !hasPrice ? 'Enter your pack' : empty ? 'Now add the contents' : 'Now enter the price';
+    $('#sub').textContent = empty && !hasPrice ? 'Nothing is filled in for you. Enter the price and what\'s inside to see its value.' : empty ? 'Enter how many of each item the pack has.' : 'Enter the price shown in your shop.';
     setGauge(NaN, null);
   } else if (r.free) {
     $('#mult').textContent = 'Free'; $('#label').textContent = 'Take it'; $('#sub').textContent = `About ${moneyUSD(worthUSD)} of value for nothing.`;
@@ -681,8 +691,8 @@ function render() {
     setGauge(r.multiplier, r.verdict);
   }
   $('#worth').textContent = empty ? '—' : moneyUSD(worthUSD);
-  $('#pay').textContent = priceLocal > 0 ? moneyLocal(priceLocal) : 'Free';
-  $('#extra').textContent = empty ? '—' : worthUSD >= price ? '+' + fmtLocal(localOf(worthUSD - price)) : '−' + fmtLocal(localOf(price - worthUSD));
+  $('#pay').textContent = !hasPrice ? '—' : priceLocal > 0 ? moneyLocal(priceLocal) : 'Free';
+  $('#extra').textContent = !ready ? '—' : worthUSD >= price ? '+' + fmtLocal(localOf(worthUSD - price)) : '−' + fmtLocal(localOf(price - worthUSD));
   $('#bank-value').innerHTML = price > 0 ? fmt(Math.round(C.bankGems(price, DATA.bank))) + ' <small>gems</small>' : '—';
 
   const tb = $('#breakdown'); tb.innerHTML = '';
@@ -700,7 +710,7 @@ function render() {
   $('#notes').innerHTML = notes.join('');
 
   const m = C.matchPacks(state.contents, price, DATA.packs);
-  $('#match').innerHTML = m.length ? `<div class="match">Matches logged pack${m.length > 1 ? 's' : ''}: ${m.map(x => `<b>${x.pack.name}</b> (${moneyUSD(x.pack.price)}${x.pack.limit ? ', ' + (/^\d+$/.test(x.pack.limit) ? 'limit ' + x.pack.limit : x.pack.limit) : ''}${x.samePrice ? '' : ', different price'})`).join(' · ')}</div>` : '';
+  $('#match').innerHTML = ready && m.length ? `<div class="match">Matches logged pack${m.length > 1 ? 's' : ''}: ${m.map(x => `<b>${x.pack.name}</b> (${moneyUSD(x.pack.price)}${x.pack.limit ? ', ' + (/^\d+$/.test(x.pack.limit) ? 'limit ' + x.pack.limit : x.pack.limit) : ''}${x.samePrice ? '' : ', different price'})`).join(' · ')}</div>` : '';
   renderCatalog();
 }
 function subFor(r, worthUSD, priceUSD) {
@@ -756,7 +766,6 @@ function loadPack(pk) {
 buildInputs();
 buildCurrencyPicker();
 applyCurrency();
-$('#price').value = round2(localOf(lastUSD));
 applyCurrency();
 // Rates arrive after first paint. Re-express the price only if the person has not typed their own number.
 loadRates().then(() => { if (!priceTyped && lastUSD > 0) $('#price').value = round2(localOf(lastUSD)); applyCurrency(); });
