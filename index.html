@@ -69,8 +69,12 @@
   .card-head .hint { color: var(--faint); font-size: 12.5px; }
   .sticky { position: sticky; top: 16px; }
   button.btn:disabled { opacity: .4; cursor: default; border-color: var(--border); }
+  button.btn.reset-pack { background: linear-gradient(180deg, #ffd84a, #f2b705); color: #1a1403; border: 1px solid #ffe27a; font: 700 15px/1 var(--display); letter-spacing: 1px; text-transform: uppercase; padding: 11px 18px; box-shadow: 0 0 0 1px rgba(242,183,5,.35), 0 4px 16px rgba(242,183,5,.28); transition: filter .15s, transform .1s; }
+  button.btn.reset-pack:hover:not(:disabled) { filter: brightness(1.08); border-color: #fff1b0; }
+  button.btn.reset-pack:active:not(:disabled) { transform: translateY(1px); }
+  button.btn.reset-pack:disabled { opacity: .35; box-shadow: none; border-color: #ffe27a; }
   .price-row .reset-pack { margin-left: auto; }
-  .reset-wide { display: block; width: 100%; margin-top: 12px; }
+  .reset-wide { display: block; width: 100%; margin-top: 12px; padding: 14px 18px !important; font-size: 17px !important; }
   .card-head.step2 { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
   .price-input.need { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(217,171,60,.35); }
   details.catalog > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
@@ -312,7 +316,7 @@
       <table class="bd"><tbody id="breakdown"></tbody></table>
       <div id="notes"></div>
       <div id="match"></div>
-      <button type="button" class="btn primary reset-pack reset-wide">↺ Reset pack and enter another</button>
+      <button type="button" class="btn reset-pack reset-wide">↺ Reset pack and enter another</button>
       <div class="toggles">
         <label><input type="checkbox" id="opt-filler" checked><span>Count filler items<span class="d">Gold, memorium, energy, tokens and boosts. Turn off if you'd never spend gems on them.</span></span></label>
       </div>
