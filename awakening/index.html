@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invokers Awakening Calculator</title>
+<meta name="description" content="How many dungeon runs, how much energy and how many gems it takes to awaken an Invokers: Titan Legacy unit to a target star, for the stages you can actually farm.">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0c; --surface:#131317; --surface-2:#1a1b20; --surface-3:#22232a; --border:#2a2b32; --border-2:#353640;
+    --text:#f4f4f5; --muted:#9c9da6; --faint:#62636c; --gold:#d9ab3c; --gold-2:#f1cf6b; --gold-ink:#1a1403;
+    --warn:#ee8d3b; --bad:#e4544c; --ok:#3ed07c;
+    --tier1:#3cc3dc; --tier2:#b46ae8; --tier3:#eea13a;
+    --legend:#e0a93a; --epic:#a979e6; --rare:#5b9cf0;
+    --radius:16px; --font:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif; --display:"Barlow Condensed","Barlow",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--font)}
+  body{padding:0 16px 60px;min-height:100vh;background-image:radial-gradient(1000px 460px at 15% -12%,rgba(217,171,60,.13),transparent 70%),radial-gradient(700px 380px at 100% 0%,rgba(180,106,232,.06),transparent 70%)}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:url("icons/_pattern.png") no-repeat right -120px top -140px / 760px auto;opacity:.04}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto}
+  a{color:var(--gold);text-decoration:none} a:hover{text-decoration:underline}
+  button,input,select{font-family:inherit}
+  img{display:block}
+
+  /* ---------- header ---------- */
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;padding:28px 0 16px}
+  .brand{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .brand img{height:42px;width:auto}
+  .brand .sep{width:1px;height:40px;background:var(--border-2)}
+  .brand h1{margin:0;font:800 36px/1 var(--display);letter-spacing:.8px;text-transform:uppercase}
+  .brand h1 span{background:linear-gradient(180deg,var(--gold-2),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand .tag{display:block;margin-top:5px;font:500 13px/1.3 var(--font);color:var(--muted);letter-spacing:.2px;text-transform:none}
+  header .right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:600}
+  .divider{height:13px;margin:0 auto 22px;background:url("icons/_divider.png") no-repeat center / contain;opacity:.7}
+  @media (max-width:560px){.brand .sep{display:none}.brand h1{font-size:30px}}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:390px 1fr;gap:20px;align-items:start}
+  @media (max-width:920px){.grid{grid-template-columns:1fr}}
+  .card{position:relative;background:linear-gradient(180deg,#17171c,#111115);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:0 14px 34px rgba(0,0,0,.35)}
+  .card::before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(241,207,107,.45),transparent)}
+  .card h2{margin:0 0 4px;font:800 22px/1 var(--display);letter-spacing:.8px;text-transform:uppercase}
+  .card h2 + .sub{margin:0 0 6px;color:var(--faint);font-size:13px}
+
+  /* ---------- inputs ---------- */
+  .step{display:flex;align-items:center;gap:10px;margin:18px 0 9px;font:700 12px/1 var(--font);letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+  .step i{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface-3);border:1px solid var(--border-2);color:var(--gold-2);font:800 13px/1 var(--display);font-style:normal}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1 1 0;min-width:0;padding:10px 6px;border-radius:11px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font:700 15px/1 var(--font);cursor:pointer;transition:border-color .12s,background .12s,transform .06s}
+  .seg button:hover:not(:disabled){border-color:var(--gold)}
+  .seg button:active:not(:disabled){transform:translateY(1px)}
+  .seg button.on{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:var(--gold-ink);border-color:var(--gold-2);box-shadow:0 4px 14px rgba(217,171,60,.25)}
+  .seg button.on.rare{background:linear-gradient(180deg,#78b1f6,var(--rare));color:#fff;border-color:#8bbdf8;box-shadow:0 4px 14px rgba(91,156,240,.25)}
+  .seg button.on.epic{background:linear-gradient(180deg,#bf98ef,var(--epic));color:#fff;border-color:#c9a6f2;box-shadow:0 4px 14px rgba(169,121,230,.25)}
+  .seg button.on.legend{background:linear-gradient(180deg,var(--gold-2),var(--legend));color:var(--gold-ink);border-color:var(--gold-2)}
+  .seg button:disabled{opacity:.28;cursor:default}
+  .seg.stars button{font-size:14px}
+  .seg.stars button b{color:var(--gold-2)}
+  .seg.stars button.on b{color:var(--gold-ink)}
+
+  .farm{display:grid;gap:8px}
+  .frow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.015)}
+  .frow label{flex:1;min-width:0;font-weight:700}
+  .frow label small{display:block;color:var(--faint);font-weight:500;font-size:12px;margin-top:1px}
+  select{appearance:none;-webkit-appearance:none;padding:8px 30px 8px 12px;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23d9ab3c'/%3E%3C/svg%3E") no-repeat right 11px center;color:var(--text);font:700 14px/1.2 var(--font);cursor:pointer}
+  select:hover{border-color:var(--gold)}
+
+  details{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+  summary{cursor:pointer;color:var(--muted);font:700 12px/1 var(--font);letter-spacing:.9px;text-transform:uppercase;list-style:none;display:flex;align-items:center;gap:8px}
+  summary::before{content:"+";display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--surface-3);color:var(--gold-2);font-size:14px}
+  details[open] summary::before{content:"–"}
+  .owned{display:grid;grid-template-columns:1fr repeat(3,64px);gap:6px 8px;align-items:center;margin-top:12px;font-size:13px}
+  .owned .h{font-size:11px;text-align:center;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  .owned input{width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);text-align:right;font-weight:700}
+  .owned input:focus{outline:none;border-color:var(--gold)}
+  .owned input:disabled{opacity:.25}
+
+  /* ---------- results ---------- */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  @media (max-width:560px){.tiles{grid-template-columns:1fr}}
+  .tile{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border)}
+  .tile img{width:58px;height:58px;flex:none;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))}
+  .tile .k{font:700 11px/1 var(--font);letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+  .tile .v{margin-top:6px;font:800 44px/0.95 var(--display);letter-spacing:.3px}
+  .tile .s{margin-top:5px;font-size:12px;color:var(--faint)}
+  .tile.gems{background:linear-gradient(135deg,rgba(217,171,60,.16),rgba(217,171,60,.03));border-color:rgba(217,171,60,.38)}
+  .tile.gems .v{color:var(--gold-2)}
+
+  .ico{display:inline-block;width:20px;height:20px;vertical-align:-4px;margin-left:5px}
+  .ico.sm{width:16px;height:16px;vertical-align:-3px;margin:0 0 0 4px}
+
+  .mhead,.mrow{display:grid;grid-template-columns:1fr 84px 124px 112px;gap:8px 12px;align-items:start}
+  .mhead{padding:0 14px 8px;font:700 11px/1 var(--font);letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+  .mhead .num{display:flex;align-items:center;justify-content:flex-end}
+  .mrow{padding:14px;margin-bottom:8px;border:1px solid var(--border);border-radius:13px;background:rgba(255,255,255,.018)}
+  .mrow .name{display:flex;align-items:center;gap:8px;font:800 19px/1.05 var(--display);letter-spacing:.4px;text-transform:uppercase}
+  .mrow .name img{width:24px;height:24px}
+  .mrow .where{color:var(--muted);font-size:12px;margin-top:3px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .chip{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid;background:rgba(0,0,0,.25)}
+  .chip.t1{color:var(--tier1);border-color:rgba(60,195,220,.4)}
+  .chip.t2{color:var(--tier2);border-color:rgba(180,106,232,.45)}
+  .chip.t3{color:var(--tier3);border-color:rgba(238,161,58,.45)}
+  .chip.spark{color:var(--gold-2);border-color:rgba(217,171,60,.45)}
+  .chip.none{color:var(--faint);border-color:var(--border-2)}
+  .mrow .num{text-align:right;font-variant-numeric:tabular-nums}
+  .mrow .num .big{font:800 24px/1 var(--display);white-space:nowrap}
+  .mrow .num .lab{display:none}
+  .mrow .num .sub{color:var(--faint);font-size:11px;margin-top:3px}
+  .notes{grid-column:1 / -1;display:grid;gap:6px}
+  .note{font-size:12.5px;padding:7px 10px;border-radius:9px;background:rgba(238,141,59,.09);color:var(--warn);border-left:3px solid var(--warn)}
+  .note.bad{background:rgba(228,84,76,.10);color:var(--bad);border-left-color:var(--bad)}
+  .note.ok{background:rgba(62,208,124,.08);color:var(--ok);border-left-color:var(--ok)}
+  .mrow.zero{opacity:.45}
+  .total{display:grid;grid-template-columns:1fr 124px 112px;gap:12px;align-items:center;margin-top:12px;padding:16px 14px;border-radius:13px;background:linear-gradient(90deg,rgba(217,171,60,.18),rgba(217,171,60,.05));border:1px solid rgba(217,171,60,.4)}
+  .total .lab{font:800 20px/1.1 var(--display);letter-spacing:.5px;text-transform:uppercase}
+  .total .lab small{display:block;font:500 12px/1.3 var(--font);letter-spacing:0;text-transform:none;color:var(--muted);margin-top:2px}
+  .total .num{text-align:right;font:800 28px/1 var(--display);white-space:nowrap}
+  .total .num.g{color:var(--gold-2)}
+  @media (max-width:640px){
+    .mhead{display:none}
+    .mrow{grid-template-columns:repeat(3,1fr)}
+    .mrow .info{grid-column:1 / -1}
+    .mrow .num{text-align:left}
+    .mrow .num .lab{display:block;color:var(--faint);font:700 10px/1 var(--font);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px}
+    .total{grid-template-columns:1fr 1fr}
+    .total .lab{grid-column:1 / -1}
+    .total .num{text-align:left}
+  }
+  .foot{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;line-height:1.55}
+  .foot b{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img src="icons/_logo.png" alt="Invokers: Titan Legacy" width="360" height="86">
+      <span class="sep"></span>
+      <div>
+        <h1>Awakening <span>Calculator</span></h1>
+        <span class="tag">Runs, energy and gems to awaken a unit to the star you want, on the stages you can clear.</span>
+      </div>
+    </div>
+    <div class="right">
+      <span class="badge" id="updated"></span>
+    </div>
+  </header>
+  <div class="divider"></div>
+
+  <div class="grid">
+    <section class="card" id="inputs">
+      <h2>Your plan</h2>
+      <p class="sub">Every change updates the totals instantly.</p>
+      <div class="step"><i>1</i>Rarity</div>
+      <div class="seg" id="rarity"></div>
+      <div class="step"><i>2</i>Awakening stars already finished</div>
+      <div class="seg stars" id="from"></div>
+      <div class="step"><i>3</i>Target awakening star</div>
+      <div class="seg stars" id="to"></div>
+
+      <div class="step"><i>4</i>Where you farm</div>
+      <div class="farm">
+        <div class="frow"><label>Astral Essence<small>Omnissi - The Astral Garuda</small></label><select id="st-astral"></select></div>
+        <div class="frow"><label>Elemental Essence<small>Your element's essence dungeon</small></label><select id="st-elemental"></select></div>
+        <div class="frow"><label>Class Crests<small>Your class's crest dungeon</small></label><select id="st-class"></select></div>
+        <div class="frow"><label>Titan Spark<small>Pentiax - The Corrupted Dragon</small></label><select id="st-titan"></select></div>
+        <div class="frow"><label>Faction Runes<small>Campaign stages</small></label><select id="st-faction"><option value="Hard">Hard</option><option value="Insane" selected>Insane</option></select></div>
+      </div>
+
+      <details>
+        <summary>Materials you already have</summary>
+        <div class="owned" id="owned"></div>
+      </details>
+    </section>
+
+    <section class="card" id="results">
+      <div class="tiles">
+        <div class="tile"><img src="icons/energy.png" alt=""><div><div class="k">Total energy</div><div class="v" id="t-energy">0</div><div class="s" id="t-bars"></div></div></div>
+        <div class="tile gems"><img src="icons/gems.png" alt=""><div><div class="k">Gems if you bought it all</div><div class="v" id="t-gems">0</div><div class="s">50 per 100 energy, 2.5 per Multi-Battle Token</div></div></div>
+      </div>
+      <div class="mhead"><div>Material</div><div class="num">Runs</div><div class="num">Energy<img class="ico sm" src="icons/energy.png" alt=""></div><div class="num">Gems<img class="ico sm" src="icons/gems.png" alt=""></div></div>
+      <div id="rows"></div>
+      <div class="total" id="total"></div>
+      <div class="foot">
+        <b>How it works.</b> Costs are the measured node totals of every awakening star on one unit per rarity; Soul Signs change which stats the nodes give, not what they cost. Dungeon stages drop one essence or crest tile per battle, so a stage's expected haul is the sum of amount × chance from its Rewards panel. Spare lower-tier items are traded up at the Item Trader, 10 for 1. Faction Rune rates come from two long auto-battle runs, one Hard and one Insane, and will vary by stage. Gems assume every point of energy is bought at the shop's daily rate; VIP bonuses and event energy are not counted.
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>/* Awakening materials calculator - pure math. Browser + Node. DATA is the baked awakening-calc-data.json. */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.AwkCalc = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  const MATS = ["astral", "elemental", "class", "faction", "titan"];
+
+  // Materials needed to go from `fromStar` (already fully unlocked) to `toStar`, per material, split by tier.
+  function needs(D, rarity, fromStar, toStar, owned) {
+    const out = {};
+    for (const m of MATS) out[m] = [0, 0, 0];
+    for (let s = fromStar + 1; s <= toStar; s++) {
+      const tier = D.tier_of_star[String(s)] - 1;
+      const c = D.costs[rarity][String(s)];
+      for (const m of MATS) {
+        if (m === "titan") out[m][0] += c[m];
+        else out[m][tier] += c[m];
+      }
+    }
+    if (owned) {
+      for (const m of MATS) for (let t = 0; t < 3; t++) {
+        out[m][t] = Math.max(0, out[m][t] - ((owned[m] && owned[m][t]) || 0));
+      }
+    }
+    return out;
+  }
+
+  // Can `runs` runs at per-run tier rates cover the tiered need, trading surplus up at `trader`:1?
+  function covers(rate, runs, need, trader) {
+    let have0 = rate[0] * runs, have1 = rate[1] * runs, have2 = rate[2] * runs;
+    if (have0 < need[0]) return false;
+    have1 += (have0 - need[0]) / trader;
+    if (have1 < need[1]) return false;
+    have2 += (have1 - need[1]) / trader;
+    return have2 >= need[2];
+  }
+
+  // Smallest run count that covers `need`, or null when the stage can never cover it.
+  function runsFor(rate, need, trader) {
+    if (need.every((n) => n <= 0)) return 0;
+    // feasibility: every needed tier must be reachable from some dropped tier at or below it
+    const lowestDropped = rate.findIndex((r) => r > 0);
+    if (lowestDropped < 0) return null;
+    const lowestNeeded = need.findIndex((n) => n > 0);
+    if (lowestDropped > lowestNeeded) return null; // e.g. S20 drops no Raw but Raw is needed
+    let lo = 1, hi = 1;
+    while (!covers(rate, hi, need, trader)) { hi *= 2; if (hi > 1e7) return null; }
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (covers(rate, mid, need, trader)) hi = mid; else lo = mid + 1; }
+    return lo;
+  }
+
+  // Which tiers are being manufactured at the trader rather than dropped (for the explanation line).
+  function tradedTiers(rate, need) {
+    const t = [];
+    for (let i = 0; i < 3; i++) if (need[i] > 0 && rate[i] === 0) t.push(i);
+    return t;
+  }
+
+  // Stage with the most Raw per energy (used to top up Raw when the chosen stage drops none).
+  function bestRawStage(D) {
+    let best = null;
+    for (const k of Object.keys(D.dungeon)) {
+      const s = D.dungeon[k]; if (s.rate[0] <= 0) continue;
+      const pe = s.rate[0] / s.energy;
+      if (!best || pe > best.pe) best = { stage: Number(k), pe, rate: s.rate[0], energy: s.energy };
+    }
+    return best;
+  }
+
+  function planDungeon(D, need, stageKey) {
+    const st = D.dungeon[String(stageKey)];
+    let runs = runsFor(st.rate, need, D.trader);
+    let extra = null;
+    if (runs === null && need[0] > 0 && st.rate[0] === 0) {
+      // chosen stage has no Raw: farm the Raw on the best Raw stage, the rest here
+      const b = bestRawStage(D);
+      const rawRuns = Math.ceil(need[0] / b.rate);
+      const rest = [0, need[1], need[2]];
+      runs = runsFor(st.rate, rest, D.trader);
+      if (runs !== null) extra = { stage: b.stage, runs: rawRuns, energy: rawRuns * b.energy };
+    }
+    const energy = runs === null ? null : runs * st.energy + (extra ? extra.energy : 0);
+    // best single stage for this exact need
+    let best = null;
+    for (const k of Object.keys(D.dungeon)) {
+      const s = D.dungeon[k];
+      const r = runsFor(s.rate, need, D.trader);
+      if (r === null) continue;
+      const e = r * s.energy;
+      if (!best || e < best.energy) best = { stage: Number(k), runs: r, energy: e };
+    }
+    return { runs, energy, stage: Number(stageKey), extra, traded: tradedTiers(st.rate, extra ? [0, need[1], need[2]] : need), best, gems: energy === null ? null : energy * D.gems.per_100_energy / 100 };
+  }
+
+  function planRunes(D, need, difficulty) {
+    const d = D.runes[difficulty];
+    const runs = runsFor(d.rate, need, D.trader);
+    const energy = runs === null ? null : runs * d.energy;
+    const alt = difficulty === "Hard" ? "Insane" : "Hard";
+    const altRuns = runsFor(D.runes[alt].rate, need, D.trader);
+    return {
+      runs, energy, difficulty, traded: tradedTiers(d.rate, need),
+      tokens: runs, hours: runs === null ? null : runs * d.secs / 3600,
+      gems: energy === null ? null : energy * D.gems.per_100_energy / 100 + runs * D.gems.per_token,
+      alt: altRuns === null ? null : { difficulty: alt, runs: altRuns, energy: altRuns * D.runes[alt].energy },
+    };
+  }
+
+  function planSpark(D, needSpark, stageKey) {
+    const st = D.spark[String(stageKey)];
+    const runs = needSpark <= 0 ? 0 : Math.ceil(needSpark / st.rate);
+    const energy = runs * st.energy;
+    let best = null;
+    for (const k of Object.keys(D.spark)) {
+      const s = D.spark[k]; const r = needSpark <= 0 ? 0 : Math.ceil(needSpark / s.rate); const e = r * s.energy;
+      if (!best || e < best.energy) best = { stage: Number(k), runs: r, energy: e };
+    }
+    return { runs, energy, stage: Number(stageKey), best, gems: energy * D.gems.per_100_energy / 100 };
+  }
+
+  // opts: { rarity, fromStar, toStar, stages: {astral, elemental, class, titan}, runeDifficulty, owned }
+  function plan(D, opts) {
+    const need = needs(D, opts.rarity, opts.fromStar, opts.toStar, opts.owned);
+    const rows = {
+      astral: planDungeon(D, need.astral, opts.stages.astral),
+      elemental: planDungeon(D, need.elemental, opts.stages.elemental),
+      class: planDungeon(D, need.class, opts.stages.class),
+      faction: planRunes(D, need.faction, opts.runeDifficulty),
+      titan: planSpark(D, need.titan[0], opts.stages.titan),
+    };
+    let energy = 0, gems = 0, infeasible = [];
+    for (const m of MATS) {
+      if (rows[m].energy === null) infeasible.push(m);
+      else { energy += rows[m].energy; gems += rows[m].gems; }
+    }
+    return { need, rows, energy, gems: Math.ceil(gems), infeasible };
+  }
+
+  return { MATS, needs, runsFor, plan };
+});
+</script>
+<script>
+const DATA = {"updated":"2026-11-05","costs":{"Rare":{"1":{"astral":22,"elemental":10,"faction":50,"class":20,"titan":0},"2":{"astral":33,"elemental":10,"faction":60,"class":40,"titan":50},"3":{"astral":12,"elemental":8,"faction":25,"class":40,"titan":0},"4":{"astral":23,"elemental":8,"faction":28,"class":60,"titan":200},"5":{"astral":12,"elemental":5,"faction":25,"class":40,"titan":0},"6":{"astral":23,"elemental":10,"faction":28,"class":60,"titan":1000}},"Epic":{"1":{"astral":35,"elemental":17,"faction":75,"class":40,"titan":0},"2":{"astral":45,"elemental":20,"faction":80,"class":60,"titan":70},"3":{"astral":24,"elemental":15,"faction":50,"class":60,"titan":0},"4":{"astral":35,"elemental":15,"faction":60,"class":80,"titan":350},"5":{"astral":24,"elemental":11,"faction":50,"class":60,"titan":0},"6":{"astral":65,"elemental":20,"faction":40,"class":80,"titan":1750}},"Legendary":{"1":{"astral":60,"elemental":25,"faction":100,"class":60,"titan":0},"2":{"astral":70,"elemental":30,"faction":120,"class":100,"titan":100},"3":{"astral":38,"elemental":25,"faction":75,"class":80,"titan":0},"4":{"astral":50,"elemental":25,"faction":80,"class":100,"titan":500},"5":{"astral":40,"elemental":18,"faction":75,"class":80,"titan":0},"6":{"astral":90,"elemental":30,"faction":60,"class":100,"titan":2500}}},"tier_of_star":{"1":1,"2":1,"3":2,"4":2,"5":3,"6":3},"tier_names":{"astral":["Raw","Refined","Pure"],"elemental":["Raw","Refined","Pure"],"class":["Novice","Expert","Master"],"faction":["Ancient","Enchanted","Divine"]},"dungeon":{"1":{"energy":5,"rate":[3.0,0,0]},"2":{"energy":5,"rate":[3.4,0,0]},"3":{"energy":5,"rate":[3.6,0,0]},"4":{"energy":7,"rate":[3.8,0,0]},"5":{"energy":7,"rate":[4.0,0,0]},"6":{"energy":7,"rate":[3.825,0.42,0]},"7":{"energy":7,"rate":[4.2,0.667,0]},"8":{"energy":9,"rate":[4.126,0.85,0.16]},"9":{"energy":9,"rate":[4.38,1.2,0.27]},"10":{"energy":9,"rate":[4.68,1.45,0.27]},"11":{"energy":9,"rate":[4.9,1.7,0.3]},"12":{"energy":11,"rate":[4.876,2.083,0.45]},"13":{"energy":11,"rate":[4.96,2.56,0.544]},"14":{"energy":11,"rate":[5.016,2.903,0.578]},"15":{"energy":11,"rate":[5.04,3.247,0.612]},"16":{"energy":13,"rate":[5.2,4.0,0.8]},"17":{"energy":13,"rate":[5.76,4.3,0.88]},"18":{"energy":13,"rate":[5.88,4.633,1.0]},"19":{"energy":13,"rate":[6.08,5.367,1.08]},"20":{"energy":14,"rate":[0,10.733,2.66]}},"spark":{"1":{"energy":4,"rate":4.0},"2":{"energy":4,"rate":6.0},"3":{"energy":6,"rate":12.0},"4":{"energy":6,"rate":15.0},"5":{"energy":8,"rate":23.0},"6":{"energy":8,"rate":25.0},"7":{"energy":10,"rate":32.0},"8":{"energy":10,"rate":34.0},"9":{"energy":12,"rate":42.0},"10":{"energy":12,"rate":48.0},"11":{"energy":12,"rate":54.0},"12":{"energy":12,"rate":60.0},"13":{"energy":16,"rate":92.0},"14":{"energy":16,"rate":104.0},"15":{"energy":16,"rate":116.0},"16":{"energy":16,"rate":128.0},"17":{"energy":20,"rate":180.0},"18":{"energy":20,"rate":200.0},"19":{"energy":20,"rate":220.0},"20":{"energy":20,"rate":240.0}},"runes":{"Hard":{"energy":10,"secs":36,"rate":[2.44,0.16,0.0],"sample":"50 battles"},"Insane":{"energy":14,"secs":149,"rate":[1.641,0.453,0.393],"sample":"117 battles"}},"gems":{"per_100_energy":50,"per_token":2.5},"trader":10,"units":{"Rare":"Rufin (Sign of Pirea)","Epic":"Pyla the Fumebanner (Sign of Kalibar)","Legendary":"Grimnall the Hollowed (Sign of Duthra)"}};
+const ICON = { energy: "icons/energy.png", gems: "icons/gems.png", titan: "icons/titan_spark.png" };
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => n === null || n === undefined ? "–" : Math.round(n).toLocaleString();
+const state = { rarity: "Legendary", from: 0, to: 4, stages: { astral: 4, elemental: 5, class: 4, titan: 4 }, runeDifficulty: "Insane", owned: {} };
+const MATS = ["astral", "elemental", "class", "faction", "titan"];
+const MAT_LABEL = { astral: "Astral Essence", elemental: "Elemental Essence", class: "Class Crests", faction: "Faction Runes", titan: "Titan Spark" };
+const WHERE = { astral: "Omnissi", elemental: "Essence dungeon", class: "Crest dungeon", titan: "Pentiax" };
+
+$("#updated").textContent = "Data from " + DATA.updated;
+
+function seg(el, items, cur, onpick, cls) {
+  el.innerHTML = "";
+  for (const it of items) {
+    const b = document.createElement("button");
+    b.innerHTML = it.label; b.className = (it.value === cur ? "on " : "") + (cls ? cls(it.value) : "");
+    b.disabled = !!it.disabled;
+    b.onclick = () => { onpick(it.value); render(); };
+    el.appendChild(b);
+  }
+}
+function fillStages(sel, table, cur) {
+  sel.innerHTML = "";
+  for (const k of Object.keys(table)) {
+    const o = document.createElement("option"); o.value = k; o.textContent = "Stage " + k + " · " + table[k].energy + "⚡";
+    if (Number(k) === cur) o.selected = true; sel.appendChild(o);
+  }
+}
+for (const m of ["astral", "elemental", "class"]) { fillStages($("#st-" + m), DATA.dungeon, state.stages[m]); $("#st-" + m).onchange = (e) => { state.stages[m] = Number(e.target.value); render(); }; }
+fillStages($("#st-titan"), DATA.spark, state.stages.titan); $("#st-titan").onchange = (e) => { state.stages.titan = Number(e.target.value); render(); };
+$("#st-faction").onchange = (e) => { state.runeDifficulty = e.target.value; render(); };
+
+(function buildOwned() {
+  const g = $("#owned");
+  g.innerHTML = '<div></div><div class="h" style="color:var(--tier1)">Tier 1</div><div class="h" style="color:var(--tier2)">Tier 2</div><div class="h" style="color:var(--tier3)">Tier 3</div>';
+  for (const m of MATS) {
+    const lab = document.createElement("div"); lab.textContent = MAT_LABEL[m]; g.appendChild(lab);
+    state.owned[m] = [0, 0, 0];
+    for (let t = 0; t < 3; t++) {
+      const i = document.createElement("input"); i.type = "number"; i.min = 0; i.placeholder = "0"; i.inputMode = "numeric";
+      if (m === "titan" && t > 0) i.disabled = true;
+      i.oninput = () => { state.owned[m][t] = Math.max(0, Number(i.value) || 0); render(); };
+      g.appendChild(i);
+    }
+  }
+})();
+
+function chips(m, need) {
+  const names = m === "titan" ? ["Titan Spark"] : DATA.tier_names[m];
+  const out = [];
+  for (let t = 0; t < names.length; t++) if (need[t] > 0) out.push('<span class="chip ' + (m === "titan" ? "spark" : "t" + (t + 1)) + '">' + fmt(need[t]) + " " + names[t] + "</span>");
+  return out.length ? out.join("") : '<span class="chip none">Nothing needed</span>';
+}
+const withIcon = (v, key, cls) => '<span class="big">' + fmt(v) + "</span>" + (v === null ? "" : '<img class="ico' + (cls ? " " + cls : "") + '" src="' + ICON[key] + '" alt="">');
+
+function render() {
+  seg($("#rarity"), ["Rare", "Epic", "Legendary"].map((r) => ({ label: r, value: r })), state.rarity, (v) => (state.rarity = v),
+      (v) => ({ Rare: "rare", Epic: "epic", Legendary: "legend" })[v]);
+  seg($("#from"), [0, 1, 2, 3, 4, 5].map((n) => ({ label: n === 0 ? "None" : n + "<b>★</b>", value: n })), state.from,
+      (v) => { state.from = v; if (state.to <= v) state.to = v + 1; });
+  seg($("#to"), [1, 2, 3, 4, 5, 6].map((n) => ({ label: n + "<b>★</b>", value: n, disabled: n <= state.from })), state.to, (v) => (state.to = v));
+
+  const P = AwkCalc.plan(DATA, { rarity: state.rarity, fromStar: state.from, toStar: state.to, stages: state.stages, runeDifficulty: state.runeDifficulty, owned: state.owned });
+  $("#t-energy").textContent = fmt(P.energy);
+  $("#t-bars").textContent = "about " + Math.ceil(P.energy / 96).toLocaleString() + " full energy bars" + (P.infeasible.length ? ", some rows not counted" : "");
+  $("#t-gems").textContent = fmt(P.gems);
+
+  const box = $("#rows"); box.innerHTML = "";
+  for (const m of MATS) {
+    const r = P.rows[m], need = P.need[m];
+    const where = m === "faction" ? "Campaign · " + r.difficulty : WHERE[m] + " · stage " + r.stage;
+    const notes = [];
+    if (r.energy === null) {
+      notes.push('<div class="note bad">This stage drops none of the lowest tier you still need, and the trader only converts upward. Pick an earlier stage' + (r.best ? ": stage " + r.best.stage + " does it in " + fmt(r.best.energy) + " energy" : "") + ".</div>");
+    } else {
+      if (r.extra) notes.push('<div class="note ok">Stage ' + r.stage + " drops no " + DATA.tier_names[m][0] + ", so " + fmt(r.extra.runs) + " runs of stage " + r.extra.stage + " (" + fmt(r.extra.energy) + " energy) are added for it.</div>");
+      if (r.traded && r.traded.length) {
+        const names = DATA.tier_names[m];
+        notes.push('<div class="note">' + r.traded.map((t) => names[t]).join(" and ") + " never drop" + (m === "faction" ? " on " + r.difficulty : " on stage " + r.stage) + ", so they are made at the Item Trader from 10 of the tier below. That is most of this row.</div>");
+      }
+      if (r.best && r.best.energy < r.energy * 0.8) notes.push('<div class="note ok">Stage ' + r.best.stage + " would do it in " + fmt(r.best.energy) + " energy, " + fmt(r.best.runs) + " runs.</div>");
+      if (m === "faction" && r.alt && r.alt.energy < r.energy * 0.8) notes.push('<div class="note ok">' + r.alt.difficulty + " would do it in " + fmt(r.alt.energy) + " energy, " + fmt(r.alt.runs) + " runs.</div>");
+    }
+    const row = document.createElement("div");
+    row.className = "mrow" + (r.runs === 0 ? " zero" : "");
+    row.innerHTML =
+      '<div class="info"><div class="name">' + (m === "titan" ? '<img src="' + ICON.titan + '" alt="">' : "") + MAT_LABEL[m] + '</div><div class="where">' + where + '</div><div class="chips">' + chips(m, need) + "</div></div>" +
+      '<div class="num"><span class="lab">Runs</span><span class="big">' + fmt(r.runs) + "</span>" + (r.extra ? '<div class="sub">+ ' + fmt(r.extra.runs) + " on stage " + r.extra.stage + "</div>" : "") + "</div>" +
+      '<div class="num"><span class="lab">Energy</span>' + withIcon(r.energy, "energy") + "</div>" +
+      '<div class="num"><span class="lab">Gems</span>' + withIcon(r.gems === null ? null : Math.ceil(r.gems), "gems") + (m === "faction" && r.runs ? '<div class="sub">incl. ' + fmt(r.tokens) + " battle tokens</div>" : "") + "</div>" +
+      (notes.length ? '<div class="notes">' + notes.join("") + "</div>" : "");
+    box.appendChild(row);
+  }
+  $("#total").innerHTML =
+    '<div class="lab">Total<small>' + state.rarity + ", " + (state.from ? state.from + "★ to " : "up to ") + state.to + "★</small></div>" +
+    '<div class="num">' + fmt(P.energy) + '<img class="ico" src="' + ICON.energy + '" alt=""></div>' +
+    '<div class="num g">' + fmt(P.gems) + '<img class="ico" src="' + ICON.gems + '" alt=""></div>';
+}
+render();
+</script>
+</body>
+</html>
