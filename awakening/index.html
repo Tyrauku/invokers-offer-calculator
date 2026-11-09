@@ -183,13 +183,13 @@
     <section class="card" id="results">
       <div class="tiles">
         <div class="tile"><img src="icons/energy.png" alt=""><div><div class="k">Total energy</div><div class="v" id="t-energy">0</div><div class="s" id="t-bars"></div></div></div>
-        <div class="tile gems"><img src="icons/gems.png" alt=""><div><div class="k">Gems if you bought it all</div><div class="v" id="t-gems">0</div><div class="s">50 per 100 energy, 2.5 per Multi-Battle Token</div></div></div>
+        <div class="tile gems"><img src="icons/gems.png" alt=""><div><div class="k">Gems if you bought it all</div><div class="v" id="t-gems">0</div><div class="s">Energy refills: 50, then 100, then 150 gems per 100 each day. 2.5 per Multi-Battle Token</div></div></div>
       </div>
       <div class="mhead"><div>Material</div><div class="num">Runs</div><div class="num">Energy<img class="ico sm" src="icons/energy.png" alt=""></div><div class="num">Gems<img class="ico sm" src="icons/gems.png" alt=""></div></div>
       <div id="rows"></div>
       <div class="total" id="total"></div>
       <div class="foot">
-        <b>How it works.</b> Costs are the measured node totals of every awakening star on one unit per rarity; Soul Signs change which stats the nodes give, not what they cost. Dungeon stages drop one essence or crest tile per battle, so a stage's expected haul is the sum of amount × chance from its Rewards panel. Spare lower-tier items are traded up at the Item Trader, 10 for 1. Faction Rune rates come from two long auto-battle runs, one Hard and one Insane, and will vary by stage. Gems assume every point of energy is bought at the shop's daily rate; VIP bonuses and event energy are not counted.
+        <b>How it works.</b> Costs are the measured node totals of every awakening star on one unit per rarity; Soul Signs change which stats the nodes give, not what they cost. Dungeon stages drop one essence or crest tile per battle, so a stage's expected haul is the sum of amount × chance from its Rewards panel. Spare lower-tier items are traded up at the Item Trader, 10 for 1. Faction Rune rates come from two long auto-battle runs, one Hard and one Insane, and will vary by stage. Gems assume all the energy is bought in one day with refills (the first 100 energy costs 50 gems, the second 100 costs 100, every 100 after that 150) and Multi-Battle Tokens at 40 for 100 gems; VIP bonuses and event energy are not counted.
       </div>
     </section>
   </div>
@@ -220,6 +220,15 @@
       }
     }
     return out;
+  }
+
+  // Gems to buy `energy` with refills in one day: whole 100-energy refills, the first ones discounted
+  // (50, then 100 gems), every one after that at refill_after (150). The price never rises further.
+  function energyGems(D, energy) {
+    const g = D.gems, blocks = Math.ceil(energy / g.energy_per_refill);
+    let gems = 0;
+    for (let i = 0; i < blocks; i++) gems += i < g.refills.length ? g.refills[i] : g.refill_after;
+    return gems;
   }
 
   // Can `runs` runs at per-run tier rates cover the tiered need, trading surplus up at `trader`:1?
@@ -286,7 +295,7 @@
       const e = r * s.energy;
       if (!best || e < best.energy) best = { stage: Number(k), runs: r, energy: e };
     }
-    return { runs, energy, stage: Number(stageKey), extra, traded: tradedTiers(st.rate, extra ? [0, need[1], need[2]] : need), best, gems: energy === null ? null : energy * D.gems.per_100_energy / 100 };
+    return { runs, energy, stage: Number(stageKey), extra, traded: tradedTiers(st.rate, extra ? [0, need[1], need[2]] : need), best, gems: energy === null ? null : energy * D.gems.refill_after / D.gems.energy_per_refill };
   }
 
   function planRunes(D, need, difficulty) {
@@ -298,7 +307,7 @@
     return {
       runs, energy, difficulty, traded: tradedTiers(d.rate, need),
       tokens: runs, hours: runs === null ? null : runs * d.secs / 3600,
-      gems: energy === null ? null : energy * D.gems.per_100_energy / 100 + runs * D.gems.per_token,
+      gems: energy === null ? null : energy * D.gems.refill_after / D.gems.energy_per_refill + runs * D.gems.per_token,
       alt: altRuns === null ? null : { difficulty: alt, runs: altRuns, energy: altRuns * D.runes[alt].energy },
     };
   }
@@ -312,7 +321,7 @@
       const s = D.spark[k]; const r = needSpark <= 0 ? 0 : Math.ceil(needSpark / s.rate); const e = r * s.energy;
       if (!best || e < best.energy) best = { stage: Number(k), runs: r, energy: e };
     }
-    return { runs, energy, stage: Number(stageKey), best, gems: energy * D.gems.per_100_energy / 100 };
+    return { runs, energy, stage: Number(stageKey), best, gems: energy * D.gems.refill_after / D.gems.energy_per_refill };
   }
 
   // opts: { rarity, fromStar, toStar, stages: {astral, elemental, class, titan}, runeDifficulty, owned }
@@ -325,19 +334,27 @@
       faction: planRunes(D, need.faction, opts.runeDifficulty),
       titan: planSpark(D, need.titan[0], opts.stages.titan),
     };
-    let energy = 0, gems = 0, infeasible = [];
+    let energy = 0, infeasible = [];
     for (const m of MATS) {
       if (rows[m].energy === null) infeasible.push(m);
-      else { energy += rows[m].energy; gems += rows[m].gems; }
+      else energy += rows[m].energy;
+    }
+    // the whole bill bought in one day: tiered refills on the total energy, split by each material's energy share
+    const eGems = energyGems(D, energy);
+    let gems = 0;
+    for (const m of MATS) {
+      if (rows[m].energy === null) continue;
+      rows[m].gems = (energy ? eGems * rows[m].energy / energy : 0) + (m === "faction" ? (rows[m].tokens || 0) * D.gems.per_token : 0);
+      gems += rows[m].gems;
     }
     return { need, rows, energy, gems: Math.ceil(gems), infeasible };
   }
 
-  return { MATS, needs, runsFor, plan };
+  return { MATS, needs, runsFor, plan, energyGems };
 });
 </script>
 <script>
-const DATA = {"updated":"2026-11-05","costs":{"Rare":{"1":{"astral":22,"elemental":10,"faction":50,"class":20,"titan":0},"2":{"astral":33,"elemental":10,"faction":60,"class":40,"titan":50},"3":{"astral":12,"elemental":8,"faction":25,"class":40,"titan":0},"4":{"astral":23,"elemental":8,"faction":28,"class":60,"titan":200},"5":{"astral":12,"elemental":5,"faction":25,"class":40,"titan":0},"6":{"astral":23,"elemental":10,"faction":28,"class":60,"titan":1000}},"Epic":{"1":{"astral":35,"elemental":17,"faction":75,"class":40,"titan":0},"2":{"astral":45,"elemental":20,"faction":80,"class":60,"titan":70},"3":{"astral":24,"elemental":15,"faction":50,"class":60,"titan":0},"4":{"astral":35,"elemental":15,"faction":60,"class":80,"titan":350},"5":{"astral":24,"elemental":11,"faction":50,"class":60,"titan":0},"6":{"astral":65,"elemental":20,"faction":40,"class":80,"titan":1750}},"Legendary":{"1":{"astral":60,"elemental":25,"faction":100,"class":60,"titan":0},"2":{"astral":70,"elemental":30,"faction":120,"class":100,"titan":100},"3":{"astral":38,"elemental":25,"faction":75,"class":80,"titan":0},"4":{"astral":50,"elemental":25,"faction":80,"class":100,"titan":500},"5":{"astral":40,"elemental":18,"faction":75,"class":80,"titan":0},"6":{"astral":90,"elemental":30,"faction":60,"class":100,"titan":2500}}},"tier_of_star":{"1":1,"2":1,"3":2,"4":2,"5":3,"6":3},"tier_names":{"astral":["Raw","Refined","Pure"],"elemental":["Raw","Refined","Pure"],"class":["Novice","Expert","Master"],"faction":["Ancient","Enchanted","Divine"]},"dungeon":{"1":{"energy":5,"rate":[3.0,0,0]},"2":{"energy":5,"rate":[3.4,0,0]},"3":{"energy":5,"rate":[3.6,0,0]},"4":{"energy":7,"rate":[3.8,0,0]},"5":{"energy":7,"rate":[4.0,0,0]},"6":{"energy":7,"rate":[3.825,0.42,0]},"7":{"energy":7,"rate":[4.2,0.667,0]},"8":{"energy":9,"rate":[4.126,0.85,0.16]},"9":{"energy":9,"rate":[4.38,1.2,0.27]},"10":{"energy":9,"rate":[4.68,1.45,0.27]},"11":{"energy":9,"rate":[4.9,1.7,0.3]},"12":{"energy":11,"rate":[4.876,2.083,0.45]},"13":{"energy":11,"rate":[4.96,2.56,0.544]},"14":{"energy":11,"rate":[5.016,2.903,0.578]},"15":{"energy":11,"rate":[5.04,3.247,0.612]},"16":{"energy":13,"rate":[5.2,4.0,0.8]},"17":{"energy":13,"rate":[5.76,4.3,0.88]},"18":{"energy":13,"rate":[5.88,4.633,1.0]},"19":{"energy":13,"rate":[6.08,5.367,1.08]},"20":{"energy":14,"rate":[0,10.733,2.66]}},"spark":{"1":{"energy":4,"rate":4.0},"2":{"energy":4,"rate":6.0},"3":{"energy":6,"rate":12.0},"4":{"energy":6,"rate":15.0},"5":{"energy":8,"rate":23.0},"6":{"energy":8,"rate":25.0},"7":{"energy":10,"rate":32.0},"8":{"energy":10,"rate":34.0},"9":{"energy":12,"rate":42.0},"10":{"energy":12,"rate":48.0},"11":{"energy":12,"rate":54.0},"12":{"energy":12,"rate":60.0},"13":{"energy":16,"rate":92.0},"14":{"energy":16,"rate":104.0},"15":{"energy":16,"rate":116.0},"16":{"energy":16,"rate":128.0},"17":{"energy":20,"rate":180.0},"18":{"energy":20,"rate":200.0},"19":{"energy":20,"rate":220.0},"20":{"energy":20,"rate":240.0}},"runes":{"Hard":{"energy":10,"secs":36,"rate":[2.44,0.16,0.0],"sample":"50 battles"},"Insane":{"energy":14,"secs":149,"rate":[1.641,0.453,0.393],"sample":"117 battles"}},"gems":{"per_100_energy":50,"per_token":2.5},"trader":10,"units":{"Rare":"Rufin (Sign of Pirea)","Epic":"Pyla the Fumebanner (Sign of Kalibar)","Legendary":"Grimnall the Hollowed (Sign of Duthra)"}};
+const DATA = {"updated":"2026-11-05","costs":{"Rare":{"1":{"astral":22,"elemental":10,"faction":50,"class":20,"titan":0},"2":{"astral":33,"elemental":10,"faction":60,"class":40,"titan":50},"3":{"astral":12,"elemental":8,"faction":25,"class":40,"titan":0},"4":{"astral":23,"elemental":8,"faction":28,"class":60,"titan":200},"5":{"astral":12,"elemental":5,"faction":25,"class":40,"titan":0},"6":{"astral":23,"elemental":10,"faction":28,"class":60,"titan":1000}},"Epic":{"1":{"astral":35,"elemental":17,"faction":75,"class":40,"titan":0},"2":{"astral":45,"elemental":20,"faction":80,"class":60,"titan":70},"3":{"astral":24,"elemental":15,"faction":50,"class":60,"titan":0},"4":{"astral":35,"elemental":15,"faction":60,"class":80,"titan":350},"5":{"astral":24,"elemental":11,"faction":50,"class":60,"titan":0},"6":{"astral":65,"elemental":20,"faction":40,"class":80,"titan":1750}},"Legendary":{"1":{"astral":60,"elemental":25,"faction":100,"class":60,"titan":0},"2":{"astral":70,"elemental":30,"faction":120,"class":100,"titan":100},"3":{"astral":38,"elemental":25,"faction":75,"class":80,"titan":0},"4":{"astral":50,"elemental":25,"faction":80,"class":100,"titan":500},"5":{"astral":40,"elemental":18,"faction":75,"class":80,"titan":0},"6":{"astral":90,"elemental":30,"faction":60,"class":100,"titan":2500}}},"tier_of_star":{"1":1,"2":1,"3":2,"4":2,"5":3,"6":3},"tier_names":{"astral":["Raw","Refined","Pure"],"elemental":["Raw","Refined","Pure"],"class":["Novice","Expert","Master"],"faction":["Ancient","Enchanted","Divine"]},"dungeon":{"1":{"energy":5,"rate":[3.0,0,0]},"2":{"energy":5,"rate":[3.4,0,0]},"3":{"energy":5,"rate":[3.6,0,0]},"4":{"energy":7,"rate":[3.8,0,0]},"5":{"energy":7,"rate":[4.0,0,0]},"6":{"energy":7,"rate":[3.825,0.42,0]},"7":{"energy":7,"rate":[4.2,0.667,0]},"8":{"energy":9,"rate":[4.126,0.85,0.16]},"9":{"energy":9,"rate":[4.38,1.2,0.27]},"10":{"energy":9,"rate":[4.68,1.45,0.27]},"11":{"energy":9,"rate":[4.9,1.7,0.3]},"12":{"energy":11,"rate":[4.876,2.083,0.45]},"13":{"energy":11,"rate":[4.96,2.56,0.544]},"14":{"energy":11,"rate":[5.016,2.903,0.578]},"15":{"energy":11,"rate":[5.04,3.247,0.612]},"16":{"energy":13,"rate":[5.2,4.0,0.8]},"17":{"energy":13,"rate":[5.76,4.3,0.88]},"18":{"energy":13,"rate":[5.88,4.633,1.0]},"19":{"energy":13,"rate":[6.08,5.367,1.08]},"20":{"energy":14,"rate":[0,10.733,2.66]}},"spark":{"1":{"energy":4,"rate":4.0},"2":{"energy":4,"rate":6.0},"3":{"energy":6,"rate":12.0},"4":{"energy":6,"rate":15.0},"5":{"energy":8,"rate":23.0},"6":{"energy":8,"rate":25.0},"7":{"energy":10,"rate":32.0},"8":{"energy":10,"rate":34.0},"9":{"energy":12,"rate":42.0},"10":{"energy":12,"rate":48.0},"11":{"energy":12,"rate":54.0},"12":{"energy":12,"rate":60.0},"13":{"energy":16,"rate":92.0},"14":{"energy":16,"rate":104.0},"15":{"energy":16,"rate":116.0},"16":{"energy":16,"rate":128.0},"17":{"energy":20,"rate":180.0},"18":{"energy":20,"rate":200.0},"19":{"energy":20,"rate":220.0},"20":{"energy":20,"rate":240.0}},"runes":{"Hard":{"energy":10,"secs":36,"rate":[2.44,0.16,0.0],"sample":"50 battles"},"Insane":{"energy":14,"secs":149,"rate":[1.641,0.453,0.393],"sample":"117 battles"}},"gems":{"refills":[50,100],"refill_after":150,"energy_per_refill":100,"per_token":2.5},"trader":10,"units":{"Rare":"Rufin (Sign of Pirea)","Epic":"Pyla the Fumebanner (Sign of Kalibar)","Legendary":"Grimnall the Hollowed (Sign of Duthra)"}};
 const ICON = { energy: "icons/energy.png", gems: "icons/gems.png", titan: "icons/titan_spark.png" };
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n === null || n === undefined ? "–" : Math.round(n).toLocaleString();
