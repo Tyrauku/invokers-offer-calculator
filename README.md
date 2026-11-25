@@ -1,7 +1,10 @@
-# Invokers: Titan Legacy — Offer Calculator
+# Tyrauku's Invokers tools (moved)
 
-Enter a shop pack's price and contents and see how its gem value compares with buying the same money in plain gems from the Bank. Browse every logged pack ranked by value.
+The tools now live on Tyrauku's tools server. The pages here only forward there, so old links keep working:
 
-Built from the data in the `offers/` folder of Tyrauku's channel workspace; `index.html` is a generated file, do not edit it by hand. Values are gem-equivalents; Divine, Radiant, Fate and Dream Orb are estimates from summon odds.
+- Offer Calculator: https://tyrauku-tools.fly.dev/offers/
+- Awakening Calculator: https://tyrauku-tools.fly.dev/awakening/
+- Trophy Hall Planner: https://tyrauku-tools.fly.dev/trophy/
+- Who to 60 Next: https://tyrauku-tools.fly.dev/who-to-60/
 
-Live page: https://tyrauku.github.io/invokers-offer-calculator/ (GitHub Pages serves `index.html` from this repository's root).
+All tools: https://tyrauku.github.io/ · YouTube: https://www.youtube.com/@TyraukuGaming
